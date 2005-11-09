@@ -1,4 +1,15 @@
-??? Verify what X & O are used for (white & black) on quoridor mail server
+Quoridor Internet Game Playing Protocol Specification
+v0.1
+November 9, 2005
+Authors:
+	Brad Morrey
+	Brent Miller
+
+$RcsId: $
+
+
+
+Verify what X & O are used for (white & black) on quoridor mail server
 
 ??? flow/state diagram
 
