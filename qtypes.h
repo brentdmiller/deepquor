@@ -1,125 +1,123 @@
-#define BLOCKED_POSITION_FUDGE 40
-#define TURN_SCORE   64 /* Choosing multiples of 2 optimizes arithmetic */
-#define PLY_SCORE    32
-#define MOVESTACKSIZ 200 /* Must be big enough to hold entire game */
-#define POSITION_HASH_BUCKETS 49152 /* Make this variable??? */
-#define HEAP_INITIAL_BLOCK_SIZE 32
-#define HEAP_BLOCK_SIZE       1024
-
-// This macro can define an array for modifying a position's complexity
-// based on the number of opponent's walls
-#define WALL_COMPLEXITY_FUDGE \
-{ -45, -24, -4, -1, 0, 1, 1, 2, 2, 2, 2 }
-
-// This macro can define an array for boosting a player's position score
-// based on the number of walls he and his opponent have.
-// If not defined, scores are boosted one move per wall
-#define WALL_SCORE_FUDGE \
-{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 639 }, /*0*/\
- { -72,   0,  69, 135, 200, 264, 327, 388, 449, 509, 568 }, /*1*/\
- {-139, -69,   0,  67, 132, 196, 259, 321, 382, 442, 501 }, /*2*/\
- {-205,-135, -67,   0,  66, 130, 193, 255, 316, 376, 435 }, /*3*/\
- {-270,-200,-132, -66,   0,  65, 128, 190, 251, 311, 370 }, /*4*/\
- {-334,-264,-196,-130, -65,   0,  64, 126, 187, 247, 306 }, /*5*/\
- {-397,-327,-259,-193,-128, -64,   0,  63, 124, 184, 243 }, /*6*/\
- {-459,-388,-321,-255,-190,-126, -63,   0,  62, 122, 181 }, /*7*/\
- {-520,-449,-382,-316,-251,-187,-124, -62,   0,  61, 120 }, /*8*/\
- {-580,-509,-442,-376,-311,-247,-184,-122, -61,   0,  60 }, /*9*/\
- {-630,-568,-501,-435,-370,-306,-243,-181,-120, -60,   0 }}/*10*/
-
-
-/***************************************
- * Above here is tweakable parameters; *
- * below here is code                  *
- ***************************************/
-typedef gint8 qDirection;
-#define  LEFT  -1;
-#define  RIGHT  1;
-#define  DOWN  -9;
-#define  UP     9;
-
-typedef guint8 qSquare;
-#define SQUARE(x,y) ((x)+(9*(y)))
-#define SQUARE_X(sq) ((sq)%9)
-#define SQUARE_Y(sq) ((sq)/9)
-
-#define COL 0
-#define ROW 1
-
-/* We'd really like to turn off alignment so positions can be packed into
- * a tight array!!!
+/*
+ * Copyright (c) 2005
+ *    Brent Miller and Charles Morrey.  All rights reserved.
+ *
+ * See the COPYRIGHT_NOTICE file for terms.
  */
-class qPosition {
- public:
-  inline guint8 numWhiteWallsLeft() { return (numwalls & 0x15); };
-  inline guint8 numBlackWallsLeft() { return (numwalls >> 4); };
-  inline guint8 numWallsLeft(qPlayer p)
-    { return (p)==WHITE ? numWhiteWallsLeft() : numBlackWallsLeft(); };
-  inline gbool  isBlockedByWall(qSquare fromSq, qDirection dir)
-    { return isBlockedByWall(SQUARE_X(fromSq), SQUARE_Y(fromSq), dir); };
-  inline gbool  isBlockedByWall(guint8 x, guint8 y, qDirection dir)
-    {
-      switch(dir) {
-      case UP:
-	return( (y>=8) ? FALSE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
-      case DOWN:
-	return( (y==0) ? FALSE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
-      case LEFT:
-	return( (x==0) ? FALSE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
-      case RIGHT:
-	return( (x>=8) ? FALSE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
-      }
-      g_assert(0);
-      return FALSE;
-    };
-  inline qSquare getPawn(qPlayer p)
-    { return (p==WHITE)?white_pawn_pos:black_pawn_pos; };
-  inline qSquare getWhitePawn() { return white_pawn_pos; };
-  inline qSquare getBlackPawn() { return black_pawn_pos; };
-  inline void setPawn(qPlayer p, qSquare s)
-    { if (p==WHITE) white_pawn_pos=s; else black_pawn_pos=s; };
-  inline void setWhitePawn(qSquare s) { white_pawn_pos=s; };
-  inline void setBlackPawn(qSquare s) { black_pawn_pos=s; };
 
-  // This is slow, but we use to initialize a fast cached lookup of whether
-  // any wall move is possible and also a linked list of all possible wall
-  // moves in the qMoveStack class.
-  // Use fast lookups of cached data from there instead.
-  bool canPutWall(bool, guint8, guint8);
 
-  void applyMove(qPlayer, qMove);
-  guint16 hashFunc(qPosition *);
+#ifndef INCLUDE_qtypes_h
+#define INCLUDE_qtypes_h 1
 
-#if 0 /* Don't need any of these yet */
-  inline void applyPawnMove(qPlayer, qDirection);
-  inline void putWall(bool, guint8, guint8);
-  inline void putWall(qMove);
-bool qPosition::wallAt(bool HorV, guint8 row, guint8 x)
-{ return (HorV == ROW) ? };???
-bool qPosition::wallAt(qMove)
-{};???
+#define IDSTR(msg) \
+static /**/const char *const rcsid[] = { (const char *)rcsid, "\100(#)" msg }
+
+
+// Hack since my glib headers didn't seem to be installed correctly!!!
+#define STDINT_GLIB_HACK 1
+#ifdef STDINT_GLIB_HACK
+
+#include <stdint.h>
+typedef int8_t  gint8;
+typedef uint8_t guint8;
+typedef int16_t gint16;
+typedef uint16_t guint16;
+typedef int32_t gint32;
+typedef uint32_t guint32;
+#define g_assert assert
+#ifndef DEBUG
+#define NDEBUG
+#endif
+#include <assert.h>
+
+#else
+#include <glib.h>
 #endif
 
+#ifndef NULL
+#define NULL 0
+#endif
+
+
+
+/* Basic global types and values for Brent's quoridor prog */
+
+/* The idea here is to choose values that can be added together to form
+ * relative moves from any square to any other
+ */
+typedef gint8 qDirection;
+#define  LEFT  -1
+#define  RIGHT  1
+#define  DOWN  -9
+#define  UP     9
+
+#undef  FALSE
+#define FALSE 0
+#undef  TRUE
+#define TRUE  1
+
+/* Identify a particular square on the board
+ * a qSquare is a guint8 value with a few possible operators.
+ */
+class qSquare {
+ public:
+  guint8 squareNum;
+
+  // SQUARE_VAL macro included to assist defining qInitialPosition in qpos.cpp
+#define SQUARE_VAL(x,y) ((x)+9*(y))
+  qSquare(guint8 x, guint8 y)
+    {
+      assert((x<=8) && (y<=8));
+      squareNum = SQUARE_VAL(x,y);
+    }
+
+  qSquare(guint8 squareId)
+    {
+      assert(squareId <= 80);
+      squareNum = squareId;
+    }
+
+  // No need for destructor???
+
+  // OPERATORS:
+  guint8 x() { return squareNum%9; }
+  guint8 y() { return squareNum/9; }
+
+  /* Rather than do this, we'll make the squareNum public & modifiable.
+  guint8 const getSquareId()
+    {
+      assert(squareNum <= 80);
+      return(squareNum);
+    }
+  */
+
+  qSquare applyDirection(qDirection vector)
+    { return qSquare(squareNum + vector); }
+};
+
+/* Allow bool parameters to specify cols versus rows */
+typedef enum { COL=0, ROW=1 } RowOrCol;
+
+/* Identify a particular player */
+class qPlayer {
  private:
-  guint8 row_walls[8];
-  guint8 col_walls[8];
-  guint8 white_pawn_pos;
-  guint8 black_pawn_pos;
-  guint8 numwalls; /* low 4 bits white, high 4 bits black */
-}
+  gint8 playerId;
+  /* First some basic types */
+  
+ public:
+  enum { WhitePlayer=0, BlackPlayer=1, NoPlayer=-1, OtherNoPlayer=2 };
+
+  // Construct with qPlayer::WhitePlayer or qPlayer::BlackPlayer
+  qPlayer(gint8 playerId);
+
+  bool isWhite()          { return(playerId == WhitePlayer); } 
+  bool isBlack()          { return(playerId == BlackPlayer); }
+  gint8 getPlayerId()     { return playerId;  }
+  gint8 getOtherPlayerId(){ return 1-playerId; }
+};
 
 
-typedef gint8 qPlayer;
-#define WHITE 0
-#define BLACK 1
-
-#define qScore_won   0x7fff
-#define qScore_lost -0x7fff
-#define qScore_PLY   PLY_SCORE
-#define qScore_TURN  TURN_SCORE
-#define qScore_WALL  TURN_SCORE /* Maybe this should be a function */
-
-
+/* Identify a possible move (either pawn move or a wall placement) */
 class qMove {
  private:
   /* The move is encoded as follows.
@@ -137,16 +135,22 @@ class qMove {
   guint8 move;
 
  public:
-  // Constructor for a wall placement
-  qMove(bool RorC, guint8 rowColNo, guint8 posNo) // Last 2 args must be < 8
-    { move = (posNo<<5)|(rowColNo<<3)|(RorC); };
+  // qMove -  Constructor for a wall placement
+  qMove(bool RowOrCol, guint8 rowColNo, guint8 posNo)
+    { move = (posNo<<5)|(rowColNo<<3)|(RowOrCol); };
 
   // Constructor for a pawn move
-  qMove(gint8 x, gint y) { move = (x+9*y)<<1; }; // Both args must be < abs(3)
+  qMove(gint8 deltaX, gint8 deltaY)
+    {
+      assert((-3 < deltaX) && (deltaX < 3) && (-3 < deltaY) && (deltaY < 3));
+      move = (deltaX+9*deltaY)<<1;
+    };
+
   qMove(qDirection d)    { move = (d<<1);     };
 
   // Constructor using a previously encoded move
-  // qMove(gint8 mv) { move = mv; };
+  qMove(guint8 mv) { move = mv; };
+
 
   // Members for accessing wall moves
   inline bool isWallMove()      { return   move&0x01;      };
@@ -156,12 +160,12 @@ class qMove {
   inline guint8 wallPosition()  { return   move>>5;;       };
 
   // Members for accessing pawn moves
-  inline bool       isPawnMove()        { return !(move&0x01);             };
+  inline bool     isPawnMove()          { return !(move&0x01);             };
   inline qDirection pawnMoveDirection() { return  (((qDirection)move)>>1); };
 
   // Gets the binary representation of a move (in one byte)
   inline guint8 getEncoding(void) { return move; };
-}
+};
 
 /* Notes:
  * For hashed positions, we should generally give preference to keeping
@@ -173,3 +177,4 @@ class qMove {
  * were directly computed and 1 of which was computed from 30 directly-computed
  * neighbors, would score 111 computations.
  */
+#endif // INCLUDE_qtypes_h

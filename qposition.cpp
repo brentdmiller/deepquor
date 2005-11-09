@@ -1,32 +1,66 @@
-void applyMove
+/*
+ * Copyright (c) 2005
+ *    Brent Miller and Charles Morrey.  All rights reserved.
+ *
+ * See the COPYRIGHT_NOTICE file for terms.
+ */
+
+
+
+#include "qposition.h"
+#include "parameters.h"
+
+IDSTR("$Id: qposition.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+
+
+// Is this how to have a global that is initialized by the compiler???
+const guint8  blankRows[8] = {0,0,0,0,0,0,0,0};
+const guint8 *blankCols = blankRows;
+const qSquare initialWhitePawnLocation = qSquare(4,0);
+const qSquare initialBlackPawnLocation = qSquare(4,8);
+
+const qPosition qInitialPosition =
+qPosition(blankRows,                // No walls in any row
+	  blankCols,                // No walls in any col
+	  initialWhitePawnLocation, // white pawn location
+	  initialBlackPawnLocation, // black pawn location
+	  10,                       // white walls
+	  10);                      // black walls
+
+void qPosition::applyMove
 (qPlayer player,
  qMove   move)
 {
-  if (move.isWallMove)
+  if (move.isWallMove())
     {
       if (move.wallMoveIsRow())
-	row_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition);
+	row_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition());
       else
-	col_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition);
+	col_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition());
       return;
     }
   else // isPawnMove
     {
-      if (player==WHITE)
-	setWhitePawn(getWhitePawn(player) + move.pawnMoveDirection());
+      if (player.isWhite())
+	setWhitePawn(getWhitePawn().applyDirection(move.pawnMoveDirection()));
       else
-	setBlackPawn(getBlackPawn(player) + move.pawnMoveDirection());
+	setBlackPawn(getBlackPawn().applyDirection(move.pawnMoveDirection()));
       return;
     }
 }
 
+// There is no theoretical basis for this hashFunc...the idea was to make
+// something fast that had a good chance of working sort of well.
+// We should probably do some testing to detect if there are lots of
+// collisions!!!
 guint16 qPosition::hashFunc
 (void)
 {
-  guint32 mixer
-    (mixer = pos->white_pawn_pos) |= (pos->black_pawn_pos<<9);
+  guint32 mixer;
 
-#define mixedRowNCol(n) ((((guint32)row_walls)[(3*(n))%8]<<(2*n)) ^ ((guint32)col_walls)[(5*(n)+2)%8]<<(2*n+7))
+  mixer = white_pawn_pos.squareNum | (black_pawn_pos.squareNum<<9);
+
+#define mixedRowNCol(n) ((((guint32)(row_walls[(3*(n))%8]))<<(2*(n))) ^ (((guint32)(col_walls[(5*(n)+2)%8]))<<(2*(n)+7)))
   mixer ^= mixedRowNCol(0) ^
     mixedRowNCol(1) ^
     mixedRowNCol(2) ^

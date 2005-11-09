@@ -1,28 +1,40 @@
+/*
+ * Copyright (c) 2005
+ *    Brent Miller and Charles Morrey.  All rights reserved.
+ *
+ * See the COPYRIGHT_NOTICE file for terms.
+ */
+
+
+#include "movstack.h"
+
+IDSTR("$Id: qmovstack.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+
+
 /***********************
  * class qWallMoveList *
  ***********************/
 
-static qPosition qInitialPosition =
+qMoveStack::qMoveStack(qPositionHash *hash)
 {
-  {0,0,0,0,0,0,0,0}, // No walls in any row
-  {0,0,0,0,0,0,0,0}, // No walls in any col
-  SQUARE(4,0),       // white pawn location
-  SQUARE(4,8),       // black pawn location
-  0xaa;              // 10 walls each
-}
-
-qMoveStack::qMoveStack() { qMoveStack(&qInitialPosition); };
+  qMoveStack(hash, &qInitialPosition);
+};
 
 qMoveStack::qMoveStack
-(qPosition *pos)
+(qPositionHash *hash, qPosition *pos)
 {
   sp = 0;
+  positionEvalsHash = hash;
   moveStack[sp].pos = *pos;
   moveStack[sp].move = -1;
   moveStack[sp].wallMovesBlockedByMove = NULL;
   initWallMoveTable(pos);
 }
-qMoveStack::~qMoveStack() { return; };
+
+qMoveStack::~qMoveStack() {
+  // Bother to unset any flags we set in evaluations in the hash???
+  return;
+};
 
 void qMoveStack::initWallMoveTable(qPosition *pos)
 {
@@ -69,18 +81,23 @@ void qMoveStack::initWallMoveTable(qPosition *pos)
     }
 }
 
-void qMoveStack::pushMove(qPlayer p, qMove mv, qPosition *endPos)
+void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
 {
   qMoveStackFrame *frame = &moveStack[++sp];
 
   // Record the move
   frame->move = mv;
+  frame->playerMoved = playerMoving;
 
   // Record the new position
   if (endPos)
     frame->pos = *endPos;
   else
-    (frame->pos=moveStack[sp-1].pos).applyMove.applyMove(p, mv);
+    (frame->pos=moveStack[sp-1].pos).applyMove.applyMove(playerMoving, mv);
+
+  // Mark the position as under evaluation
+  if (positionEvalsHash)
+    setMoveStack(positionEvalsHash->getElt(frame->pos), playerMoving);
 
   if (mv.isPawnMove())
     frame->wallMovesBlockedByMove.clearList();
@@ -124,9 +141,41 @@ void qMoveStack::popMove
       // list into possibleWallMoves in one segment.
       possibleWallMoves.push(blockedMove);
     }
+
+  // Mark the position as no longer under evaluation
+  if (positionEvalsHash)
+    clearMoveStack(positionEvalsHash->getElt(frame->pos), frame->playerMoved);
   return;
 }
 
+
+// These funcs flag which moves are under evaluation
+inline bool qMoveStack::isInMoveStack(qPositionInfo posInfo)
+{ return (posInfo.isPosExceptional() && (posInfo.getPositionFlag() > 0))};
+
+inline bool qMoveStack::isWhiteMoveInStack(qPositionInfo posInfo)
+{ return (posInfo.getPositionFlag() && flag_WhiteToMove)};
+
+inline bool qMoveStack::isBlackMoveInStack(qPositionInfo posInfo)
+{ return (posInfo.getPositionFlag() && flag_BlackToMove)};
+
+inline void qMoveStack::setMoveStack
+(qPositionInfo posInfo, qPlayer playerToMove)
+{
+  if (playerToMove.isWhite())
+    posInfo.setPositionFlagBits(qPositionInfo::flag_WhiteToMove);
+  else
+    posInfo.setPositionFlagBits(qPositionInfo::flag_BlackToMove);
+}
+
+inline void qMoveStack::clearMoveStack
+(qPositionInfo posInfo, qPlayer playerToMove)
+{
+  if (playerToMove.isWhite())
+    posInfo.clearPositionFlagBits(qPositionInfo::flag_WhiteToMove);
+  else
+    posInfo.clearPositionFlagBits(qPositionInfo::flag_BlackToMove);
+}
 
 /***************************
  * class qWallMoveInfoList *
@@ -176,3 +225,4 @@ qWallMoveInfo *qWallMoveInfoList::pop
   }
   return rval;
 };
+

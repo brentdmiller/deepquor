@@ -1,4 +1,26 @@
+/*
+ * Copyright (c) 2005
+ *    Brent Miller and Charles Morrey.  All rights reserved.
+ *
+ * See the COPYRIGHT_NOTICE file for terms.
+ */
+
+
+#include <qtypes.h>
+#include <qposition.h>
+#include <posinfo.h>
+#include <poshash.h>
+#include <movstack.h>
+#include <parameters.h>
+
+IDSTR("$Id: eval.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+
 #define qNO_PATH -1
+
+/* Score bonuses for various things */
+#define qScore_PLY   PLY_SCORE  /* Bonus for the player whose turn it is */
+#define qScore_TURN  TURN_SCORE /* Bonus for a whole move ahead          */
+#define qScore_WALL  TURN_SCORE /* Maybe this should be a function???    */
 
 /* Our strategy for evaluating a position is based primarily on the current
  * player's number of moves required to reach the end minus the opponent's
@@ -23,6 +45,19 @@ static guint8 wallComplexityFudge[] = WALL_COMPLEXITY_FUDGE;
 #define WALL_COMPLEXITY(p) 0
 #endif
 
+
+// Passed to qPositionHash
+guint16 CBhashFunc(qPosition p)
+{
+  return p.hashFunc();
+}
+void CBinitFunc(qPositionInfo posInfo, qPosition p)
+{
+  posInfo->clearEval(p); ???
+  posInfo->pos = *pos;
+}
+
+
 typedef struct _qDijkstra {
   int      moves;  // out: returned number of moves required
   guint16  spread; // out: rating of how spread apart possible finishes are
@@ -37,7 +72,7 @@ typedef struct _qDijkstra {
 QDecl(bool, qDijkstra, (qPlayer, qDijkstraOut*));
 
 bool qPositionHashElt::ratePositionByComputation
-(qPlayer player2move)
+(qPlayer player2move, qPosition pos, )
 /****************************************************************************
  *
  * Examine position and populate *out with score/complexity/computations
@@ -52,7 +87,7 @@ bool qPositionHashElt::ratePositionByComputation
   int     distance[2];
   guint16 spread[2];
   qDijkstraArg darg;
-  qPlayer opponent = 1-player2move;
+  qPlayer opponent(player2move.getOtherPlayerId);
 
   for (int player=0; player<=BLACK; ++player) {
     evaluation[player].computations = 1;
@@ -119,6 +154,12 @@ bool qPositionHashElt::ratePositionByComputation
     tmp = tmp
       - (numWallsLeft(opponent) ? spread[player] : 0)
       + (numWallsLeft(player) ? spread[opponent] : 0);
+
+    // !!! This spread (modified according to # walls opponent has) should
+    // be a large factor in the complexity of a position.  Other factors
+    // adding to complexity should be existence of "pawn collisions" along
+    // path, and perhaps number of moves required to reach finish and
+    // number of possible finishing squares(?)???
 
     // Store the scores for each player
     if (distance[player2move] <= 1) {
