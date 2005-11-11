@@ -12,13 +12,11 @@ November 9, 2005
 Authors:
 	Brad Morrey
 	Brent Miller
-$Id: WIRE_PROTOCOL,v 1.4 2005/11/09 20:27:25 bmiller Exp $
+$Id: WIRE_PROTOCOL,v 1.5 2005/11/11 07:55:33 bmiller Exp $
 
 
 
-??? flow/state diagram
-
-=== Item 1.  References
+=== References
 
 Here is decent write-up describing the protocol used for most
 Internet Chess Servers (ICS).
@@ -27,27 +25,40 @@ http://www.tim-mann.org/xboard/engine-intf.html
 Reading it reveals some good (and bad) ideas for what to use in our
 protocol.
 
-=== Item 2.  Format of each command
+
 
-Brent:  pick myself???  ---look for XML encoding implementations?
-Check IVM's website--they have a parsing engine for java.  Xerces?
+=== Item 2.  Format of each command
 
 To speed the of development of our parsing code, I think we should
 arrange every command to be a key/value pair (KVP) or argument vector (AV).
 This allows us to pick any existing protocol for string-encoding KVPs or AVs.
 
+Two options seem reasonable:
+(1)  use XML, such as
+   <command parameter1="blah" parameter2="bar"/>move</command>
+   or
+   <command><parameter1>foo</parameter1><parameter2>bar</parameter2></command>
+   We could use Xerces to parse it in C, java & perl.
+
+(2) Use CSV as described in RFC 4180, with '\n' or '\0' separators between
+    commands.
+
+I believe CSV will be lighter, portable (wikipedia points out
+implementations available for most languages), and would be easy for
+a human to type into a telnet window.
+
+Xerces would also be portable, but perhaps less so, would require
+Xerces libraries, and would make it harder for a human to "wing it"
+with telnet.  But it would have the advantage that if future commands
+required binary data or multiple lines, they would be handles by
+serialization mechanisms provided by Xerces.
+
+Brad, between those two, do you have a preference???
+
 Since we're writing over sockets, there has to be some delimiter so that
-we know when we've received an entire encoded command.  Probably terminate
-each encoding with a '\n' or '\0'...but anything that works is fine.
-
-Some examples of prospective implementations from java are the
-com.apple.dnssd.TXTRecord class for converting key/value object pairs
-into text strings, or java.util.Vector, which has a toString function.
-But I'm not sure if there are any C/C++/perl/python implementations for
-either of those.
-
-Do you happen to know of any suitable KVP or AV string encoding
-implementations?  If not, I'll continue to investigate and something.
+we know when we've received an entire encoded command.  For CSV, probably
+terminate each encoding with a '\n' or '\0'...but anything that works is
+fine.  I'm not positive how xerces would work, but I'm sure it would.
 
 === Item 3.  The commands
 
@@ -66,12 +77,12 @@ receive.
 
 I propose the following list of commands for the initial draft:
 
-hello
+HELLO
   arg1: name of client
 Connecting viewer sends this immediately upon establishing a connection.
 No response is necessary upon receiving this.
 
-protover
+PROTOVER
   arg1: "0.1" protocol version number (a decimal string)
 Connecting viewer sends this immediately after "hello" command.
 This describes the protocol version the viewer will proceed using.
@@ -87,7 +98,7 @@ sent version number, the viewer can send another protover command with
 a version number equal to or lower than the received version number,
 or send a "quit" command.
 
-feature (optional)
+FEATURE (optional)
   arg1: feature name
   args2+: arguments specific to the requested feature
 This request asks if whoever is at the connection's other endpoint supports
@@ -98,61 +109,76 @@ future versions without changing the communication protocol.
    The initial viewer should probably not have any code for sending feature
 commands, and just respond to any it receives with "rejected"
 
-accepted
-rejected
+ACCEPTED
+REJECTED
   arg1: Name of feature queried by server
 This is sent in response to the "feature" command from the server described
 below.
 
-new (optional)
-  arg1: "confirmed" (optional)
-Request to reset game to initial state and configuration.  If we receive
-a "new" command from the opponent before we have sent any "move" commands,
-then we must immediately send a "new confirmed" (arg1="confirmed")
-command to the opponent, indicating that our viewer has been reset.
 
-??? fix grammar:
-If we receive a "new confirmed" command, and we have sent a "new" command
-without both a subsequent "move" sent and thereafter a subsequent "move"
-received, then we must enter a new state.  
-
-If we receive a "new confirmed"
-without having first sent a "new" command or after having made and received
-a move, then we can either respond with an error or honor the "new confirmed"
-command with our own "new confirmed" response.
-
-Maybe add a "withdraw new request" command??? [no, not at first]
-
-??? define when color negotion happens (after new???)
-Make this part of the new command?
-white
-  No args
-Request UI client to control white pawn (O) & server computer to play black
+WHITE [name]
+  arg1 (optional): name of white player (should probably match hello cmd)
+Request for sender to control white pawn (O) & opponent to play black
 If opponent sends a "black" request, proceed with moving.
 
-black
-  No args
+BLACK [name]
+  arg1 (optional): name of white player (should probably match hello cmd)
 Request UI client to control black pawn (X) & server computer to play white
 If opponent sends a "white" request, proceed waiting for opponent to move.
 
-move
+I decided against making this part of the "new" command.  It's just
+easier this way, and we might need to negotiate many aspects of the new
+game (clock time, rule variations, etc.) using FEATURES before performing
+the NEW.
+
+
+NEW (optional)
+  arg1: "CONFIRMED" (optional)
+Request to reset game board to initial state and begin play.  If we receive
+a "NEW" command from the opponent before we have sent any "MOVE" commands,
+then we must immediately send a "NEW CONFIRMED" (arg1="CONFIRMED")
+command to the opponent, indicating that our viewer has been reset.
+A "NEW" command is a request; no response is necessary.  A "NEW" request
+is considered open until whoever made the request has sent
+a subsequent move, and received another move in response.  If we receive
+a "NEW CONFIRMED" command, and we have sent a "NEW" command, and we have
+not both sent a "move" command and thereafter received a subsequent "MOVE",
+then we must enter a new state.  
+If we receive a "NEW CONFIRMED" but have not previously sent a "NEW" command
+or have not sent a "new" command that is still "open," then we can either
+respond with an error or honor the "NEW CONFIRMED" command with our own
+"NEW CONFIRMED" response.  Such a scenario is an error and cannot be
+silently ignored.
+
+Maybe add a "NEW CANCEL" command??? (i.e. new with a "CANCEL" parameter)
+  This would cancel any "open" new requests, regardless of who had sent them.
+  [no, not at first]
+
+
+MOVE
   arg1: "O" (white) or "X" (black) (not sure about this arg)
-  arg2: some notation designating the move
+  arg2: notation designating the move (see below)
   arg3: decimal whole number of walls remaining (not sure about this arg)
 This requests the server to make the specified move, either a pawn move or
 a wall drop.  
 
-For notation, I suggest the following:
-??? Alternate scheme:
-Labels squares by row & column (A-I & A-9), &:
-Use coordinates for pawn moves (i.e. xD6 or oF7);
-Use .5s for wall moves, using infix for orientation:  C.5-3.5  or D.5|1.5
+For notation (arg2), use the following:
+Labels squares by row & column (A-I & 1-9), and
+label rows & columns between squares as A.5-H.5 / 1.5-8.5
+Use ending coordinates to designate pawn moves (i.e. D6 or F7); and
+use ".5" coordinates to designate the center of a wall, with a "-" or "|"
+infixed in the coordinates to designate whether the wall is verticle or
+horizonal (i.e. C.5-3.5  or D.5|1.5)
 
+
+Alternate scheme:
+Make the "in-between rows & columns A-H and 1-8, and number the squares.
 
 (R = A-H, C=1-8)
 "|RC" - place a "vertical" wall centered at row R, column C
 "-RC" - place a "horizontal" wall centered at row R, column C.
-or a integer between 1 and 81 naming the square to which to move the pawn.
+
+Use a integer between 1 and 81 naming the square to which to move the pawn.
 1 is the lower left-hand square (near A1), 9 is the lower right (near H1),
 72 is the upper left (near A8), and 81 is upper right (near H8).  The
 O pawn always starts at 5 and the X pawn always starts at 77.  I'm not
@@ -194,95 +220,153 @@ ends of the connection did not agree on a pawn location.  And there's
 no verification of whose piece or wall is moving.  So I modified the
 notation slightly.
 
-ackmove
+{ACKMOVE} -- nix this, for reasons stated below
   args: same as "move"
 Responds to opponent acknowledging receipt and acceptability of a move.
-???
+Once a move is received this or a MVERROR should be sent before any other
+commands (but not necessarily immediately, unless operating as a viewer
+only).  Do we really need this?  Couldn't the server just send a "GETBOARD"
+if it wants to check that a viewer has gotten all the moves?
 
-mverror
+MVERROR
   arg1: error message (optional)
   arg2: the move that was received (arg1 from client "move" command)
 Sent if a move was received that the viewer does not accept (i.e. the
 move is not legal, or it is not the opponent's turn, etc.)
-??? Now what??? (back up the bad move & return to the "moving" state)
+After a MVERROR the state returns to as if the move which caused the error
+never occured. (i.e. back up the bad move & return to the "moving" state).
+When sending a MVERROR command, it might be a good time to also send a
+GAMESTATE.
 
 ?
   No Args
 Request the opponent to move immediately (abort thinking)
 Opponent is not required to honor request.
 
-cmderror
+CMDERROR
   arg1: error message (optional)
   args2+: command & arguments received that were bad
 The specified command was received from the opponent and is not proper.
 The bad command is discarded without being honored.
 
-error
+ERROR
   args1+: textual message
-??? Now what???
+An error does not change any state at all.  If one side cannot continue
+it can drop the connection or send a quit, preferably after sending a
+GAMESTATE; but if possible it should leave the connection open to continue
+the game or to process debugging commands such as "GETBOARD."
 
-getboard
-setboard
-  arg1: 
-??? Ability to set up a starting state
+GETBOARD
+Requests the opponent to send a GAMESTATE, or set the board position.
 
-gamestate
+SETBOARD gamestate
+  args: (see GAMESTATE command)
+Request to set the board position.  This should be followed by a GETBOARD
+to check if the position was accepted.  Note:  upon receiving a SETBOARD
+that will not be honored, issuing an ERROR would be acceptable.
+
+GAMESTATE [serialized string game state]
   arg1: string encapsulation of board's state
 Tell other side what the current game state is
-How do we encapsulate the state???
-Xpawn_location,Ypawn_location,whose_move,Xwalls,Ywalls,wall_locations...
+Proposed encapsulation of the state:
+arg1: whose move (O or X)
+arg2: O pawn_location
+arg3: X pawn_location
+arg4: Num O walls
+arg5: Num X walls
+arg6: wall 1 location
+arg7: wall 2 location
+...
+arg7+: wall N location
 
-quit
+QUIT
   No args
 End game immediately.  This could be the same as dropping a connection, unless
 we want to allow resuming a game after losing a connection.
 
 [optional]
-savegame:
+SAVEGAME
   arg1: gamename(string) [optional]
-restoregame:
+RESTOREGAME
   arg1: gamename (string) [optional]
 This should be a "feature."
 
 COMMANDS WE DON'T NEED YET:
 
-tell (optional)
+TELL (optional)
   arg1: "you" "others" "all" ???
   arg2: textual string
 Request to display included text message for the opposing player
 
-resign
+RESIGN
   arg1: X or O
 Specified player loses.  ("X" or "O" arg is included for sake of being
 able to use viewer to spectate a game between two other parties.)
 
-{pause}
-{resume}
+ABORTGAME
+  arg1: CONFIRMED
+Specified player requests game abort.  Works same as new command, but simply
+ends current game rather than starting new one.  Send state to same 
+position as if players just completed FEATURE & WHITE/BLACK negotiation.
+
+{PAUSE}
+{RESUME}
   Request opponent to stop thinking & consuming CPU, (and stop any move
   timers in effect); or resume thinking.
   Once paused, the only valid next commands are resume, quit.
-{ping}
+{PING}
   arg1: integer (N)
   Requests opponent to send back "pong N" upon completing all previous
   commands.
-{setboard}
-  arg1: some notation for representing a position.
-{undo}
+{UNDO}
   Undo last move (two plies)
-{variant}
+{VARIANT}
   arg1: name of variant of normal game
   arg2+: ars for variation
 Request to play variation of normal rules.
-{force}
+{FORCE}
   Request no opponent; client will make all moves
-{go}
+{GO}
   Request opponent to resume making moves, starting with current move.
-{playother}
+{PLAYOTHER}
   Request opponent to resume playing as color who is not currently to move
-{random}
+{RANDOM}
  arg1: decimal whole number, 0-100?
   Requests opponent to play with some degree of randomness in his/her moves.
 
+=== Item 4. State diagram
+
+
+ HELLO
+   |
+   V
+ PROTOVER
+   |
+   V
+ FEATURES  <--\
+ WHITE        |
+ BLACK        |
+   |\         |
+   | \--------/
+   V
+ NEW
+ NEW CONFIRM
+   |
+   V
+ MOVE   <---+------\
+   |\       |      |
+   | \------+---> MVERROR
+   V
+ QUIT
+
+The following commands are available any time after protover:
+NEW
+CMDERROR
+ERROR
+GETBOARD
+SETBOARD
+GAMESTATE
+QUIT
 
 === Item 4. Connection specification
 
