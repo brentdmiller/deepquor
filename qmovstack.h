@@ -51,7 +51,9 @@ class qWallMoveInfoList {
   qWallMoveInfoList(); // Constructor
   void           push(qWallMoveInfo*);
   void           pop(qWallMoveInfo*);
+
   struct _wallMoveInfo *pop();
+
   qWallMoveInfo *getHead(void)  { return head; };
   qWallMoveInfo *getTail(void)  { return tail; };
   void           clearList(void){ head = tail = NULL; };
@@ -65,10 +67,14 @@ class qWallMoveInfoList {
 
 /* Keep a cache of possible moves and associated scores??? */
 typedef struct _qMoveStackFrame {
-  qPosition         pos;
-  qMove             prevMove;
+  qPosition         resultingPos;
+  qMove             move;
   qPlayer           playerMoved;
+
   qWallMoveInfoList wallMovesBlockedByMove;
+
+  // !!! See comment in class qMoveStack:
+  qPositionInfo    *posInfo;    // Remember this to avoid extra lookups
 } qMoveStackFrame;
 
 class qMoveStack {
@@ -102,23 +108,31 @@ class qMoveStack {
    */
   void initWallMoveTable(qPosition*);
 
-  void  pushMove(qPlayer, qMove, qPosition*); // ending pos is optional
+  void  pushMove(qPlayer    whoMoved,
+		 qMove      move,
+		 qPosition *endPos); // Optional optimizer
+
   void  popMove(void);
-  qMove peekLastMove(void)   {return moveStack[sp].prevMove;};
-  qPosition* getPos(void)    {return &(moveStack[sp].pos);};
+  qMove peekLastMove(void)   {return moveStack[sp-1].move;};
+  qPosition* getPos(void)    {return &(moveStack[sp].startPos);};
   qPosition* getPrevPos(void){return &(moveStack[sp-1].pos);};
 
   // Get list of possible wall moves from current location
   const vector<qMove> getPossibleWallMoves();
 
   // Returns if a given position is in the stack
+  // This is a fast check--since revisiting positions is rare, it should
+  // be used before checking for which playerToMove is in the stack
   bool isInMoveStack(qPositionInfo posInfo);
+
+  bool isInMoveStack(qPositionInfo posInfo, qPlayer player);
 
   // Returns if this position is in the move stack with white to move
   bool isWhiteMoveInStack(qPositionInfo posInfo);
 
   // Returns if this position is in the move stack with black to move
-    bool isBlackMoveInStack(qPositionInfo posInfo);
+  bool isBlackMoveInStack(qPositionInfo posInfo);
+
 
  private:
 
@@ -130,18 +144,18 @@ class qMoveStack {
       posInfo.setPositionFlagBits(qPositionInfo::flag_WhiteToMove);
     else
       posInfo.setPositionFlagBits(qPositionInfo::flag_BlackToMove);
-  }
+  };
   void clearMoveStack(qPositionInfo posInfo, qPlayer playerToMove) {
     if (playerToMove.isWhite())
       posInfo.clearPositionFlagBits(qPositionInfo::flag_WhiteToMove);
     else
       posInfo.clearPositionFlagBits(qPositionInfo::flag_BlackToMove);
-  }
+  };
 
   qMoveStackFrame moveStack[MOVESTACKSIZ];
   guint8          sp;
 
-  qWallMoveInfo     allWallMoveArry[128];
+  qWallMoveInfo     allWallMoveArry[128];  // Plently of moves
   qWallMoveInfoList possibleWallMoves;
 
   // ??? There's probably a more independent way to track which moves are
@@ -149,6 +163,10 @@ class qMoveStack {
   // store some bits in the evals for looking up which moves are in the
   // stack of a depth search.  If there are problems, this can be replaced
   // with another data type.
+  // !!! Assumes the evals for every move in the stack will remain cached
+  // in the positionEvalsHash.  One safeguard would be to block removing
+  // any position with "public" flags set in the posInfo from the hash;
+  // another would be to just use our own data type here.
   qPosInfoHash *positionEvalsHash;
 }
 

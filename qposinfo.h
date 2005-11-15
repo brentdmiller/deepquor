@@ -11,9 +11,6 @@
 
 #include "qtypes.h"
 
-#define qScore_won   0x7fff
-#define qScore_lost -0x7fff
-
 /* qPositionEvaluation
  * Struct containing all relevant information stored regarding the score
  * of a position for a given player.
@@ -22,10 +19,24 @@
 
 typedef struct _qPositionEvaluation {
   gint16 score;         // Rating of how good position is
-  guint8 complexity;    // Score's uncertainty: 0=sure, 100=0 plys, 255=unknown
+  guint16 complexity;   // Score's uncertainty: 0=sure, +/- range of score
   //! guint32 computations; // Number of direct calculations that contributed
   //! guint8  demand;       // Rating of how significant this position is
 } qPositionEvaluation;
+
+// Maximum complexity
+#define qComplexity_max  (guint16)0xffff
+
+#define qScore_won   (gint16)0x7fff
+#define qScore_lost  (gint16)-0x7fff
+
+// Useful, for example, in a line of thinking that repeats
+extern const qPositionEvaluation even_position;
+
+// A position that has not been evaluated beyond checked for game over
+extern const qPositionEvaluation unknown_position;
+
+
 
 /* Note that in general we want to evalatute positions with increasing
  * depth until we've found an adequate move with sufficiently low
@@ -75,11 +86,6 @@ class qPositionInfo {
      { evaluation[p.getPlayerId()].computations=val;};
   */
 
-  /* Routines for computing & setting this position's score/depth */
-  // Defined in eval.cpp:
-  gint16 ratePositionByComputation(qPlayer player2move);
- 
-
   /* Flags for noting stuff about position.
    * Values <= are reserved as follows:
    * 0  - nothing of interest
@@ -116,7 +122,6 @@ class qPositionInfo {
     { assert(flagPosException >= 0);
       return (flagPosException &= ~bitmask);
     }
-
 
  private:
   /* Stats for each player if his turn.   [0]=white, [1]=black */

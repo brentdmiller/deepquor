@@ -8,7 +8,7 @@
 
 #include "movstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.3 2005/11/15 18:46:21 bmiller Exp $");
 
 
 /***********************
@@ -83,7 +83,20 @@ void qMoveStack::initWallMoveTable(qPosition *pos)
 
 void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
 {
+#define ARRAYSIZE(ARR) (sizeof(ARR)/sizeof((ARR)[0]))
+
+  q_assert(sp < ARRAYSIZE(allWallMoveArry));
   qMoveStackFrame *frame = &moveStack[++sp];
+
+  // Mark the position we left as under evaluation
+  if (positionEvalsHash) {
+    prevFrame
+    frame->posInfo = positionEvalsHash->getElt(frame->pos);
+    if (!frame->posInfo)
+      frame->posInfo = positionEvalsHash->addElt(frame->pos);
+    g_assert(frame->posInfo);
+    setMoveStack(frame->posInfo, playerMoving);
+  }
 
   // Record the move
   frame->move = mv;
@@ -94,10 +107,6 @@ void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
     frame->pos = *endPos;
   else
     (frame->pos=moveStack[sp-1].pos).applyMove.applyMove(playerMoving, mv);
-
-  // Mark the position as under evaluation
-  if (positionEvalsHash)
-    setMoveStack(positionEvalsHash->getElt(frame->pos), playerMoving);
 
   if (mv.isPawnMove())
     frame->wallMovesBlockedByMove.clearList();
@@ -149,15 +158,22 @@ void qMoveStack::popMove
 }
 
 
-// These funcs flag which moves are under evaluation
+// These funcs use the positionHash to flag which moves are under evaluation
 inline bool qMoveStack::isInMoveStack(qPositionInfo posInfo)
 { return (posInfo.isPosExceptional() && (posInfo.getPositionFlag() > 0))};
 
+inline bool qMoveStack::isInMoveStack(qPositionInfo posInfo, qPlayer p)
+{ return (isInMoveStack(posInfo) &&
+	  (p.isWhite() ? isWhiteMoveInStack(posInfo) :
+	   isBlackMoveInStack(posInfo)))};
+
 inline bool qMoveStack::isWhiteMoveInStack(qPositionInfo posInfo)
-{ return (posInfo.getPositionFlag() && flag_WhiteToMove)};
+{ return (isInMoveStack(posInfo) &&
+          (posInfo.getPositionFlag() & flag_WhiteToMove))};
 
 inline bool qMoveStack::isBlackMoveInStack(qPositionInfo posInfo)
-{ return (posInfo.getPositionFlag() && flag_BlackToMove)};
+{ return (isInMoveStack(posInfo) &&
+	  (posInfo.getPositionFlag() & flag_BlackToMove))};
 
 inline void qMoveStack::setMoveStack
 (qPositionInfo posInfo, qPlayer playerToMove)
