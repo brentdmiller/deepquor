@@ -6,9 +6,9 @@
  */
 
 
-#include "movstack.h"
+#include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.3 2005/11/15 18:46:21 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.4 2005/11/15 18:58:18 bmiller Exp $");
 
 
 /***********************

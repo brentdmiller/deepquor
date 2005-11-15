@@ -38,6 +38,10 @@ class qPosition {
       numwalls = black_walls_left<<4 + white_walls_left;
     };
 
+  // Note that we rely on default memberwise copy for qPosition assignment a=b:
+  // qPosition(qPosition copy) :
+  //  white_pawn_pos(copy.white_pawn_pos), black_pawn_pos(black_pawn_pos);
+
   inline guint8 numWhiteWallsLeft() { return (numwalls & 0x15); };
   inline guint8 numBlackWallsLeft() { return (numwalls >> 4); };
   inline guint8 numWallsLeft(qPlayer p)

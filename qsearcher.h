@@ -11,12 +11,12 @@
 
 #include "qtypes.h"
 #include "qposition.h"
-#include "posinfo.h"
-#include "poshash.h"
-#include "movstack.h"
+#include "qposinfo.h"
+#include "qposhash.h"
+#include "qmovstack.h"
 #include "parameters.h"
 
-IDSTR("$Id: qsearcher.h,v 1.1 2005/11/15 18:49:42 bmiller Exp $");
+IDSTR("$Id: qsearcher.h,v 1.2 2005/11/15 18:55:56 bmiller Exp $");
 
 /* Given a position, searches, within specified constraints, for the
  * best possible move.

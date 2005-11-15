@@ -10,7 +10,7 @@
 #include "qposition.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposition.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.3 2005/11/15 18:57:02 bmiller Exp $");
 
 
 // Is this how to have a global that is initialized by the compiler???
@@ -51,6 +51,9 @@ void qPosition::applyMove
 
 // There is no theoretical basis for this hashFunc...the idea was to make
 // something fast that had a good chance of working sort of well.
+// I tried to mix up the bits, shifting the various rows & cols of wall
+// positions psuedo-randomly so that the positions that get used most
+// frequently would get distributed evenly.
 // We should probably do some testing to detect if there are lots of
 // collisions!!!
 guint16 qPosition::hashFunc

@@ -12,8 +12,8 @@
 
 #include "qtypes.h"
 #include "qposition.h"
-#include "poshash.h"
-#include "posinfo.h"
+#include "qposhash.h"
+#include "qposinfo.h"
 #include "parameters.h"
 #include <vector>
 

@@ -6,9 +6,9 @@
  */
 
 
-#include "searcher.h"
+#include "qsearcher.h"
 
-IDSTR("$Id: qsearcher.cpp,v 1.2 2005/11/15 18:49:42 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.3 2005/11/15 18:52:17 bmiller Exp $");
 
 
 /*******************

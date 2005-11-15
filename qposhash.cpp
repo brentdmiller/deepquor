@@ -7,10 +7,10 @@
 
 
 
-#include "poshash.h"
+#include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.3 2005/11/15 18:58:18 bmiller Exp $");
 
 
 /*********************** 

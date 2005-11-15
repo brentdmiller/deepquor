@@ -6,9 +6,9 @@
  */
 
 
-#include "posinfo.h"
+#include "qposinfo.h"
 
-IDSTR("$Id: qposinfo.cpp,v 1.1 2005/11/15 18:48:29 bmiller Exp $");
+IDSTR("$Id: qposinfo.cpp,v 1.2 2005/11/15 18:58:18 bmiller Exp $");
 
 
 // Used, for example, in a line of thinking that repeats
