@@ -8,12 +8,12 @@
 
 #include <qtypes.h>
 #include <qposition.h>
-#include <posinfo.h>
-#include <poshash.h>
-#include <movstack.h>
+#include <qposinfo.h>
+#include <qposhash.h>
+#include <qmovstack.h>
 #include <parameters.h>
 
-IDSTR("$Id: eval.cpp,v 1.2 2005/11/09 20:27:25 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.3 2005/11/19 08:22:33 bmiller Exp $");
 
 #define qNO_PATH -1
 
@@ -40,9 +40,9 @@ static gint16 wallScoreFudge[][] = WALL_SCORE_FUDGE;
 
 #ifdef WALL_COMPLEXITY_FUDGE
 static guint8 wallComplexityFudge[] = WALL_COMPLEXITY_FUDGE;
-#define WALL_COMPLEXITY(p) (wallComplexityFudge[(p)])
+#define WALL_COMPLEXITY(p, o) (wallComplexityFudge[(p)])
 #else
-#define WALL_COMPLEXITY(p) 0
+#define WALL_COMPLEXITY(p, o) (PLY_SCORE*((p)+(o)))
 #endif
 
 
@@ -72,7 +72,7 @@ typedef struct _qDijkstra {
 QDecl(bool, qDijkstra, (qPlayer, qDijkstraOut*));
 
 bool qPositionHashElt::ratePositionByComputation
-(qPlayer player2move, qPosition pos, )
+(qPlayer player2move, qPosition pos, qPositionInfo *posInfo)
 /****************************************************************************
  *
  * Examine position and populate *out with score/complexity/computations
@@ -91,8 +91,8 @@ bool qPositionHashElt::ratePositionByComputation
 
   for (int player=0; player<=BLACK; ++player) {
     evaluation[player].computations = 1;
-    evaluation[player].complexity = 100 +
-      WALL_COMPLEXITY(numWallsLeft(player));
+    evaluation[player].complexity = BASE_COMPLEXITY +
+      WALL_COMPLEXITY(numWallsLeft(player), numWallsLeft(opponent)));
 
     /* Use Dijkstra algorithm to find shortest path for each player */
     qDarg_CLEAR_CACHE(darg);
@@ -148,12 +148,28 @@ bool qPositionHashElt::ratePositionByComputation
        WALL_SCORE(pos.numWhiteWallsLeft(), pos.numBlackWallsLeft()) :
        WALL_SCORE(pos.numBlackWallsLeft(), pos.numWhiteWallsLeft()));
 
-    // Add in a factor for the std. deviation or spread between end squares,
+    // Add in a factor for the spread in moves to all avail. end squares,
     // This is only a factor if the opponent actually has walls.
     // Use some multiplier for this???
-    tmp = tmp
-      - (numWallsLeft(opponent) ? spread[player] : 0)
-      + (numWallsLeft(player) ? spread[opponent] : 0);
+    // This factor should roughly be the difference between the shortest
+    // path the the finish plus the longest path to the finish, plus some
+    // multiplier <= 1 times the length of all other paths to the finish.
+    //
+    // Whatever factor is arrived at, the score should be decreased by
+    // approximately half that factor, and the complexity increased by
+    // the factor.
+    goal_line_spread_factor[player] =
+      numWallsLeft(opponent) ? spread[player] : 0;
+    goal_line_spread_factor[opponent] =
+      numWallsLeft(player) ? spread[opponent] : 0;
+
+    score_adjust =
+      (goal_line_spread_factor[player] - goal_line_spread_factor[opponent])/2;
+    complexity_adjust =
+      goal_line_spread_factor[player] + goal_line_spread_factor[opponent];
+
+    tmp = tmp - score_adjust;
+
 
     // !!! This spread (modified according to # walls opponent has) should
     // be a large factor in the complexity of a position.  Other factors
@@ -166,22 +182,27 @@ bool qPositionHashElt::ratePositionByComputation
       evaluation[player].computations = 1;
       evaluation[player].complexity   = 0;
       evaluation[player].score        = qScore_won;
-    } else
+    } else {
       evaluation[player].score   = 32 + tmp;
+      evaluation[player].complexity = base_complexity + complexity_adjust;
+    }
 
     if (distance[opponent] <= 1) {
       evaluation[opponent].computations = 1;
       evaluation[opponent].complexity   = 0;
       evaluation[opponent].score        = qScore_won;
-    } else
+    } else {
       evaluation[opponent].score = 32 - tmp;
+      evaluation[opponent].complexity = base_complexity + complexity_adjust;
+    }
   }
   return True;
 }
 
-gint16  ratePositionFromNeighbors
-(qPosition pos,
- qPlayer   player2move,
+qPositionInfo *ratePositionFromNeighbors
+(qPosition     *pos,
+ qPlayer        player2move,
+ qPositionInfo *posInfo,      // optional optimization
  qPositionEvaluation *peval,     // populated upon return
                       moveList,  // populated upon return
                       evalList)  // populated upon return
@@ -200,6 +221,7 @@ gint16  ratePositionFromNeighbors
   //    rateByComputation for new positions
   // 3. Sort all evals (how?  score + complexity/20?)
   // 4. Combine evals into current positions eval.
+  //    ??? Take into accont minmax of last two plies?
 
   /*
   Score should be the negation of opponent's best move.  Perhaps the score

@@ -5,6 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: qposhash.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
 
 #ifndef INCLUDE_poshash_h
 #define INCLUDE_poshash_h
@@ -33,6 +34,12 @@ using namespace std;
  * discard the 20-wall heap once to purge all the unreachable positions.
  * This discard could be skipped if there is too little time on the clock
  * and memory to spare.
+ *
+ * If additional free memory is needed, we can then throw out the 19-wall
+ * heap, followed by the 18-wall, ....   The idea is that even if we throw
+ * away a high-numbered heap, the scores of it's positions will already
+ * have been copied to "lower" positions and most of them are probably
+ * no longer needed.
  */
 
 /***************************************************************************

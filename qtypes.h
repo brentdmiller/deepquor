@@ -5,6 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: qtypes.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -110,6 +111,9 @@ class qPlayer {
   // Construct with qPlayer::WhitePlayer or qPlayer::BlackPlayer
   qPlayer(gint8 playerId);
 
+  // Change the current instance
+  void    changePlayer()  { playerId = 1-playerId; }
+
   bool isWhite()          { return(playerId == WhitePlayer); } 
   bool isBlack()          { return(playerId == BlackPlayer); }
   gint8 getPlayerId()     { return playerId;  }
@@ -126,7 +130,7 @@ class qMove {
    *
    * For a pawn move, (signed)move>>1 gives the qDirection of the move
    *
-   * For a wall move, there following are indicates the drop position:
+   * For a wall move, the following indicates the drop position:
    *  (0x02 & mv)==TRUE  - place wall at row
    *  (0x02 & mv)==FALSE - place wall at column
    *  (0x1f & mv)>>2     - indicates row/col in which to lay wall

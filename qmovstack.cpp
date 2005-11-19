@@ -8,23 +8,17 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.4 2005/11/15 18:58:18 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.5 2005/11/19 08:22:33 bmiller Exp $");
 
 
 /***********************
  * class qWallMoveList *
  ***********************/
 
-qMoveStack::qMoveStack(qPositionHash *hash)
-{
-  qMoveStack(hash, &qInitialPosition);
-};
-
 qMoveStack::qMoveStack
-(qPositionHash *hash, qPosition *pos)
+(qPosition *pos)
 {
   sp = 0;
-  positionEvalsHash = hash;
   moveStack[sp].pos = *pos;
   moveStack[sp].move = -1;
   moveStack[sp].wallMovesBlockedByMove = NULL;
@@ -32,7 +26,6 @@ qMoveStack::qMoveStack
 }
 
 qMoveStack::~qMoveStack() {
-  // Bother to unset any flags we set in evaluations in the hash???
   return;
 };
 
@@ -88,16 +81,6 @@ void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
   q_assert(sp < ARRAYSIZE(allWallMoveArry));
   qMoveStackFrame *frame = &moveStack[++sp];
 
-  // Mark the position we left as under evaluation
-  if (positionEvalsHash) {
-    prevFrame
-    frame->posInfo = positionEvalsHash->getElt(frame->pos);
-    if (!frame->posInfo)
-      frame->posInfo = positionEvalsHash->addElt(frame->pos);
-    g_assert(frame->posInfo);
-    setMoveStack(frame->posInfo, playerMoving);
-  }
-
   // Record the move
   frame->move = mv;
   frame->playerMoved = playerMoving;
@@ -112,7 +95,10 @@ void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
     frame->wallMovesBlockedByMove.clearList();
   else {
     qWallMove *thisMove, *blockedMove, *next;
+
     thisMove = allWallMoveArry[mv.getEncoding()];
+    g_assert(thisMove->possible == True);
+
     frame->wallMovesBlockedByMove.clearList();
 
     // Of course, remove the wall placement from possible moves
@@ -151,47 +137,9 @@ void qMoveStack::popMove
       possibleWallMoves.push(blockedMove);
     }
 
-  // Mark the position as no longer under evaluation
-  if (positionEvalsHash)
-    clearMoveStack(positionEvalsHash->getElt(frame->pos), frame->playerMoved);
   return;
 }
 
-
-// These funcs use the positionHash to flag which moves are under evaluation
-inline bool qMoveStack::isInMoveStack(qPositionInfo posInfo)
-{ return (posInfo.isPosExceptional() && (posInfo.getPositionFlag() > 0))};
-
-inline bool qMoveStack::isInMoveStack(qPositionInfo posInfo, qPlayer p)
-{ return (isInMoveStack(posInfo) &&
-	  (p.isWhite() ? isWhiteMoveInStack(posInfo) :
-	   isBlackMoveInStack(posInfo)))};
-
-inline bool qMoveStack::isWhiteMoveInStack(qPositionInfo posInfo)
-{ return (isInMoveStack(posInfo) &&
-          (posInfo.getPositionFlag() & flag_WhiteToMove))};
-
-inline bool qMoveStack::isBlackMoveInStack(qPositionInfo posInfo)
-{ return (isInMoveStack(posInfo) &&
-	  (posInfo.getPositionFlag() & flag_BlackToMove))};
-
-inline void qMoveStack::setMoveStack
-(qPositionInfo posInfo, qPlayer playerToMove)
-{
-  if (playerToMove.isWhite())
-    posInfo.setPositionFlagBits(qPositionInfo::flag_WhiteToMove);
-  else
-    posInfo.setPositionFlagBits(qPositionInfo::flag_BlackToMove);
-}
-
-inline void qMoveStack::clearMoveStack
-(qPositionInfo posInfo, qPlayer playerToMove)
-{
-  if (playerToMove.isWhite())
-    posInfo.clearPositionFlagBits(qPositionInfo::flag_WhiteToMove);
-  else
-    posInfo.clearPositionFlagBits(qPositionInfo::flag_BlackToMove);
-}
 
 /***************************
  * class qWallMoveInfoList *
@@ -241,4 +189,76 @@ qWallMoveInfo *qWallMoveInfoList::pop
   }
   return rval;
 };
+
+
+// Helper funcs for flagging positions in the thought sequence
+//
+
+/*********************
+ * Private utilities *
+ *********************/
+
+// These funcs use the positionHash to flag which moves are under evaluation
+// These funcs flag which moves are under evaluation
+inline static void setMoveInEval
+(qPositionInfo *posInfo, qPlayer playerToMove)
+{
+  if (playerToMove.isWhite())
+    posInfo->setPositionFlagBits(qPositionInfo::flag_WhiteToMove);
+  else
+    posInfo->setPositionFlagBits(qPositionInfo::flag_BlackToMove);
+}
+
+inline static void clearMoveInEval
+(qPositionInfo *posInfo, qPlayer playerToMove)
+{
+  if (playerToMove.isWhite())
+    posInfo->clearPositionFlagBits(qPositionInfo::flag_WhiteToMove);
+  else
+    posInfo->clearPositionFlagBits(qPositionInfo::flag_BlackToMove);
+}
+
+// This is a fast check--since revisiting positions is rare, it should
+// be used before checking for which playerToMove is in the stack
+inline static bool isInMoveStack
+(qPositionInfo posInfo)
+{ return (posInfo.isPosExceptional() && (posInfo.getPositionFlag() > 0))};
+
+
+/***********************
+ * Public helper funcs *
+ ***********************/
+
+// These funcs set the positionHash in the qPosHash to track which moves are
+// currently under evaluation.
+qPositionInfo *pushMove(qMoveStack    *movStack,
+			qPositionInfo *posInfo,  // optimizer
+			qPosInfoHash  *posHash,  // reqd if posInfo==NULL
+			qPlayer        whoMoved, //   From here down same
+			qMove          move,     //   as qMoveStack
+			qPosition     *pos);
+
+inline void popMove(qMoveStack *movStack)
+{
+  // Mark the position as no longer under evaluation
+  movStack->popMove();
+
+  clearMoveInEval(positionEvalsHash->getElt(frame->pos), frame->playerMoved);
+}
+
+inline bool isInMoveStack
+(qPositionInfo posInfo, qPlayer p)
+{ return (isInMoveStack(posInfo) &&
+	  (p.isWhite() ? isWhiteMoveInStack(posInfo) :
+	   isBlackMoveInStack(posInfo)))};
+
+inline bool isWhiteMoveInStack
+(qPositionInfo posInfo)
+{ return (isInMoveStack(posInfo) &&
+          (posInfo.getPositionFlag() & flag_WhiteToMove))};
+
+inline bool isBlackMoveInStack
+(qPositionInfo posInfo)
+{ return (isInMoveStack(posInfo) &&
+	  (posInfo.getPositionFlag() & flag_BlackToMove))};
 

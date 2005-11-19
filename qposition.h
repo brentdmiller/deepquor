@@ -5,6 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: qposition.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h
@@ -37,6 +38,11 @@ class qPosition {
       g_assert(black_walls_left <= 15);
       numwalls = black_walls_left<<4 + white_walls_left;
     };
+
+  inline bool isWon(qPlayer p)
+    { return ((p.isWhite() ? (white_pawn_pos.y()==8) : black_pawn_pos==0)); }
+  inline bool isLost(qPlayer p)
+    { return ((p.isWhite() ? (black_pawn_pos.y()==0) : white_pawn_pos==8)); }
 
   // Note that we rely on default memberwise copy for qPosition assignment a=b:
   // qPosition(qPosition copy) :

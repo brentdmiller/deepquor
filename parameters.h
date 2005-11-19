@@ -5,6 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: parameters.h,v 1.2 2005/11/19 08:22:33 bmiller Exp $
 
 
 #ifndef INCLUDE_parameters_h
@@ -29,6 +30,8 @@
 #define HEAP_INITIAL_BLOCK_SIZE 32
 #define HEAP_BLOCK_SIZE       1024
 
+#define BASE_COMPLEXITY   36 /* Before applying any modifiers */
+
 // This macro is useful for defining an array of modifiers to a
 // position's complexity, based on the number of opponent's walls remaining
 #define WALL_COMPLEXITY_FUDGE \
@@ -37,6 +40,7 @@
 // This macro can define an array for boosting a player's position score
 // based on the number of walls he and his opponent have.
 // If not defined, scores are boosted one move per wall
+// ??? Based on vapor--needs empirical justification & tuning
 #define WALL_SCORE_FUDGE \
 {{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 639 }, /*0*/\
  { -72,   0,  69, 135, 200, 264, 327, 388, 449, 509, 568 }, /*1*/\
@@ -50,5 +54,33 @@
  {-580,-509,-442,-376,-311,-247,-184,-122, -61,   0,  60 }, /*9*/\
  {-630,-568,-501,-435,-370,-306,-243,-181,-120, -60,   0 }}/*10*/
 
+// ??? Based on vapor--needs empirical justification & tuning
+// Note that when only one player has walls, the complexity is
+// equal to the score boost--this is because the walls can't
+// hurt the player but could likely help
+#define WALL_COMPLEXITY_FUDGE \
+{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 639 }, /*0*/\
+ {  72,  64,  79, 145, 210, 274, 337, 398, 459, 519, 578 }, /*1*/\
+ { 139,  79,  80,  78, 143, 207, 270, 332, 393, 453, 512 }, /*2*/\
+ { 205, 145,  78,  88,  78, 142, 205, 267, 328, 388, 447 }, /*3*/\
+ { 270, 210, 143,  78,  92,  78, 141, 203, 264, 324, 383 }, /*4*/\
+ { 334, 274, 207, 142,  78,  94,  78, 140, 201, 261, 320 }, /*5*/\
+ { 397, 337, 270, 205, 141,  78,  95,  78, 139, 199, 258 }, /*6*/\
+ { 459, 398, 332, 267, 203, 140,  78,  96,  78, 138, 197 }, /*7*/\
+ { 520, 459, 393, 328, 264, 201, 139,  78,  96,  78, 137 }, /*8*/\
+ { 580, 519, 453, 388, 324, 261, 199, 138,  78,  97,  78 }, /*9*/\
+ { 630, 578, 512, 447, 383, 320, 258, 197, 137,  78,  98 }}/*10*/
+
+/* When a qsearcher has N contending moves in a given position,
+ * it picks which one to work on, and devotes an amount of effort
+ * proportional to (effort available)/N.  But if N is large and
+ * we are near the tail end of a thinking pass, that amount of
+ * effort may be very small.  MIN_POSITIONS_EXAMINED_PER_PLY
+ * guarantees some number of new positions to examine, no matter
+ * how small (effort avail.)/N is.
+ * Regardless of the value of MIN_POSITIONS_EXAMINED_PER_PLY,
+ * every possible move will be examined for any ply visited.
+ */
+#define MIN_POSITIONS_EXAMINED_PER_PLY 75
 
 #endif // INCLUDE_parameters_h

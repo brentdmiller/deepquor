@@ -5,6 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: qposinfo.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
 #define INCLUDE_posinfo_h
@@ -31,10 +32,12 @@ typedef struct _qPositionEvaluation {
 #define qScore_lost  (gint16)-0x7fff
 
 // Useful, for example, in a line of thinking that repeats
-extern const qPositionEvaluation even_position;
+extern const qPositionEvaluation *positionEval_even;
+extern const qPositionEvaluation *positionEval_won;
+extern const qPositionEvaluation *positionEval_lost;
 
 // A position that has not been evaluated beyond checked for game over
-extern const qPositionEvaluation unknown_position;
+extern const qPositionEvaluation *positionEval_none;
 
 
 
@@ -72,14 +75,26 @@ extern const qPositionEvaluation unknown_position;
  */
 class qPositionInfo {
  public:
-  inline gint16 getScore(qPlayer p)
+  bool          evalExists(qPlayer p);  // Return if a score/cmplxty are set
+  bool          initEval(qPlayer p);    // Initialize eval to !exists for p
+  bool          initEval();             // Initialize to !exists for both
+
+  inline qPositionEvaluation const *get(qPlayer p);
+
+  void set(qPlayer p, qPositionEvaluation const *neweval);
+
+  inline gint16 const getScore(qPlayer p)
     { return evaluation[p.getPlayerId()].score; };
-  inline void   setScore(qPlayer p, gint16 val)
+
+  inline void         setScore(qPlayer p, gint16 val)
     { evaluation[p.getPlayerId()].score=val; };
-  inline guint8 getComplexity(qPlayer p)
+
+  inline guint8 const getComplexity(qPlayer p)
     { return evaluation[p.getPlayerId()].complexity;};
-  inline void   setComplexity(qPlayer p, guint8 val)
+
+  inline void         setComplexity(qPlayer p, guint8 val)
     { evaluation[p.getPlayerId()].complexity=val;};
+
   /* inline guint8 getComputations(qPlayer p)
      { return evaluation[p.getPlayerId()].computations;};
      inline void   setComputations(qPlayer p, guint32 val)

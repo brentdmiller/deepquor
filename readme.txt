@@ -13,7 +13,7 @@ There are several primitive types from qtype.h:
   qDirection - a vector representing the relative movement between squares
   qMove   - a move (qDirection for pawn more or location of a dropped wall)
 
-The larger data structures and inerfaces are as follows:
+The larger data structures and interfaces are as follows:
   qPosition - qposition.[h,cpp]
   * An encoded position intended to use as few bytes as possible
 
@@ -22,7 +22,15 @@ The larger data structures and inerfaces are as follows:
   * positionHashes point to these
 
   qPositionHash - poshash.[h,cpp]
-  * Structure for looking up/storing positions we've seen, & associated data
+  * Structure for looking up/storing positions we've seen & associated data.
+    This holds evaluations of positions for reference when searching for
+    not just the current move but for future moves as well.
+
+  qComputationTree - qcomptree.[h,cpp]
+  * Holds state, used in computing qPositionInfos, which is not kept longer
+    than a single move search.  A qComputationTree is populated and used
+    while searching for a move, then discarded and rebuilt when searching
+    for the next move.
 
   qMoveStack - movstack.[h,cpp]
   * structure for storing sequences of moves under evaluation
@@ -36,6 +44,9 @@ The larger data structures and inerfaces are as follows:
     positions occur in the move stack.  Flagging moves that are part of the
     game history or part of the current move sequence under evaluation can
     prevent repeated moves or endless cycles during evaluation.
+  qMoveStack functionality could probably be folded into the qComputationTree,
+  but I'd already designed the qMoveStack by the time I came up with the
+  qComputationTree.
 
   eval.cpp 
   * contains a procedure for rating positions from evaluating the board
