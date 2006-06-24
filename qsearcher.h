@@ -5,6 +5,8 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
+// $Id: qsearcher.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
+
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h
 
@@ -14,12 +16,15 @@
 #include "qposinfo.h"
 #include "qposhash.h"
 #include "qmovstack.h"
+#include "qcomptree.h"
 #include "parameters.h"
-
-IDSTR("$Id: qsearcher.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $");
+#include "getmoves.h"
 
 /* Given a position, searches, within specified constraints, for the
  * best possible move.
+ * MT note:  the qSearcher constructor should take a poshash as an arg
+ * and bind to it.  This would allow many qSearchers contributing to a
+ * single posHash.   ???
  */
 class qSearcher {
 public:
@@ -31,49 +36,51 @@ public:
   ~qSearcher();
 
   // Tell me what the best move is
-  // This routing does not apply the move to the stored position
+  // This routine does not apply the move to the stored position
   // Criteria:
-  //   max_complexity:  255 for no max, 0 for "solve position mode"
+  //   max_complexity:  qComplexity_max for no max, 0 for "solve position mode"
   //   min_depth:  Examine at least this # of plies for any returned move
-  //   min_breadth:  force breadth-1st search through this # plies from start
-  //                 0 is equivalent to 1 (we always search neighbors)
-  //   max_time: thinking time, in seconds.  0 = no time limit
-  //   suggested_time: thinking time, in seconds.  0 = no limit
+  //   min_breadth:  force breadth-1st search through this # plies from start.
+  //                 Useful to front-load checking all moves if there's time.
+  //   slop: Don't bother further refining evaluations if the range of
+  //         possible scores are within 2*slop of the current best score.
+  //         Calling func should base slop on time, score, etc.
+  //   max_time: thinking time, in milliseconds.  0 = no time limit
+  //   suggested_time: thinking time, in milliseconds.  0 = no limit
   qMove search(qPlayer player2move,     // Which player to find a move for
 	       guint8  max_complexity,  // keep thinking until below
 	       guint8  min_depth,       // keep thinking until beyond
 	       guint8  min_breadth,     // brute force search this many plies
+	       guint8  slop,            // don't need to refine beyond this
                gint32  max_time,        // Hard limit on our avail. time
 	       gint32  suggested_time); // Start relaxing criteria after this
 
   // Adjust qSearcher's stored position with this move
-  applyMove(qMove mv, qPlayer p);
+  void applyMove(qMove mv, qPlayer p);
 
   // Do a "unit" of thinking (used for bg thinking); use as a service call
-  void think(qPlayer player2move);
+  // If specified, "thinkAmount" specifies approximately how many new positions
+  // to evaluate.
+  void think(qPlayer player2move, gint32 thinkAmount = 10);
 
 private:
-  typedef qPositionHash<qPosition, qPositionInfo> qPosInfoHash;
-
-  qPosInfoHash posHash;     // Where we store everything we've thought about
+  qPositionInfoHash posHash; // Where we store everything we've thought about
 
    // Where we store what we're thinking about
   qMoveStack   moveStack;
   qComputationTree computationTree;
   qComputationTree::qComputationTreeNodeId currentTreeNode;
-
-  // In cases of repeated positions or draws, this is useful for returning
-  // a score evaluation that is not in the positionHash.
-  static const qPositionEval even_evaluation;
+  guint8       wallMovesSinceTableUpdate;
 
   // Internal search routine used by both search() and background searches
-  qMove iSearch(qPosition pos,
-		qPlayer player2move,     // Which player to find a move for
+  qMove iSearch(qPlayer player2move,     // Which player to find a move for
 		guint8  max_complexity,  // keep thinking until below
-		guint8  minbreadth,      // breadth-1st through this many plies
-		guint8  mindepth,        // keep thinking until beyond
-		gint32  maxtime,         // Hard limit on our avail. time
-		gint32  suggested_time); // Ignore constraints after this
+		guint8  min_depth,       // keep thinking until beyond
+		guint8  min_breadth,     // brute force search this many plies
+		guint8  slop,            // don't need to refine beyond this
+		gint32  max_time,        // Hard limit on our avail. time
+		gint32  suggested_time); // Start relaxing criteria after this
+
 
   /* scanDeeper
    * If depth < 0, brute-force examine every position w/in abs(depth) plies.
@@ -86,18 +93,99 @@ private:
    *   up to 300 or 400(?) eventually, as we begin to evaluate
    *   positions with larger number of contibuting computations.
    */
-  qPositionEval scanDeeper(qPosition     *pos,
-			   qPlayer        player2move,
-			   gint32         depth,
-			   // qPositionEval *evalToBeat,
-			   // ??? (carry both alpha & beta?)
-			   guint32       &r_positionsEvaluated);
-
-  /* Routines for computing & setting this position's score/depth */
-  // Defined in eval.cpp:
-  gint16 ratePositionByComputation(qPlayer player2move);
-
+  const qPositionEvaluation *scanDeeper(qPosition     *pos,
+					qPlayer        player2move,
+					gint32         depth,
+					// qPositionEvaluation *evalToBeat,
+					// ??? (carry both alpha & beta?)
+					guint32       &r_positionsEvaluated);
 
 };
+
+
+/*****************************
+ * Stuff defined in eval.cpp *
+ *****************************/
+// It is not an error that an actual pos is put on the stack.
+// ratePositionByComputation() wants a copy on the stack that it can
+// safely alter during its work.
+qPositionEvaluation const *ratePositionByComputation
+(qPosition pos, qPlayer player2move, qPositionInfo *posInfo);
+
+// This is a simple virtual iterator useful for passing around eval iterators
+// corresponding to container classes that hold various types.
+class qEvalIterator {
+ public:
+  qEvalIterator()  {;};
+  ~qEvalIterator() {;};
+
+  // Advances to next eval in list
+  virtual void next() = 0;
+
+  // Returns an eval, or NULL if at end.
+  virtual qPositionEvaluation const *val() = 0;
+
+  // Returns true if at end; false otherwise
+  virtual bool atEnd() = 0;
+};
+
+
+// Here's a template implementation for standard containers of qMoves
+// C must be a container type holding qMoves.
+template <class C> class qEvalItorFromMvContainer:public qEvalIterator
+{
+ private:
+  C *container;
+  C::const_iterator itor;
+  C::const_iterator end;
+
+  // Once we have the move, stuff for looking up the eval:
+  qPositionInfoHash* posHash;
+  qPosition          pos;
+  qPlayer            player;
+
+ public:
+  // Constructor:  note that whoseEval is who's eval we get--opposite of
+  // whose eval we might be computing.
+  qEvalItorFromMvContainer(C*                 parentContainer,
+			   qPosition*         parentPos,
+			   qPlayer            whoseEval,
+			   qPositionInfoHash* evalHash) {
+    container = parentContainer;
+    itor      = container.begin();
+    end       = container.end();
+    posHash   = evalHash;
+    pos       = *parentPos;
+    player    = whoseEval;
+  };
+
+  ~qEvalItorFromMvContainer() {;};
+
+  void next() {
+    ++itor;
+  };
+
+  qPositionEvaluation const *val() {
+    if (itor == end)
+      return NULL;
+    {
+      qPositionInfo  info;
+      qPosition newPos = pos;
+      newPos.applyMove(*itor);
+      info = evalHash.getElt(&newPos);
+      return (qPositionEvaluation const*)info.get(player);
+    }
+  };
+  bool atEnd() {
+    return (itor == end ? true : false);
+  };
+};
+
+
+qPositionInfo *ratePositionFromNeighbors
+(qPosition     *pos,
+ qPlayer        player2move,
+ qPositionInfo *posInfo,      // optional optimization
+ qEvalIterator *evalItor = NULL);
 
 #endif // INCLUDE_searcher_h

@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
+// $Id: qposition.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h
@@ -40,9 +40,11 @@ class qPosition {
     };
 
   inline bool isWon(qPlayer p)
-    { return ((p.isWhite() ? (white_pawn_pos.y()==8) : black_pawn_pos==0)); }
+    { return((p.isWhite() ? (white_pawn_pos.y()==8) : black_pawn_pos.y()==0)); }
   inline bool isLost(qPlayer p)
-    { return ((p.isWhite() ? (black_pawn_pos.y()==0) : white_pawn_pos==8)); }
+    { return((p.isWhite() ? (black_pawn_pos.y()==0) : white_pawn_pos.y()==8)); }
+  inline bool isWhiteWon() { return (white_pawn_pos.y()==8); }
+  inline bool isBlackWon() { return (black_pawn_pos.y()==8); }
 
   // Note that we rely on default memberwise copy for qPosition assignment a=b:
   // qPosition(qPosition copy) :
@@ -58,16 +60,16 @@ class qPosition {
     {
       switch(dir) {
       case UP:
-	return( (y>=8) ? FALSE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
+	return( (y>=8) ? TRUE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
       case DOWN:
-	return( (y==0) ? FALSE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
+	return( (y==0) ? TRUE : (row_walls[y] & (x?((1<<x)|(1<<(x-1))):1) ));
       case LEFT:
-	return( (x==0) ? FALSE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
+	return( (x==0) ? TRUE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
       case RIGHT:
-	return( (x>=8) ? FALSE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
+	return( (x>=8) ? TRUE : (col_walls[x] & (y?((1<<y)|(1<<(y-1))):1) ));
       }
       g_assert(0);
-      return FALSE;
+      return TRUE;
     };
   inline qSquare getPawn(qPlayer p)
     { return (p.isWhite()?white_pawn_pos:black_pawn_pos); };
@@ -82,6 +84,9 @@ class qPosition {
   // any wall move is possible and also a linked list of all possible wall
   // moves in the qMoveStack class.
   // Use fast lookups of cached data from there instead.
+  // This routine does not test if a wall placement is legal (i.e. if it
+  // blocks anyone from reaching the goal); it only tests if the wall location
+  // is blocked by other walls.
   bool canPutWall(bool, guint8, guint8);
 
   void applyMove(qPlayer, qMove);
@@ -118,6 +123,6 @@ class qPosition {
 };
 
 /* Position at the beginning of the game */
-extern const qPosition initialPosition;
+extern const qPosition qInitialPosition;
 
 #endif // INCLUDE_qposition_h

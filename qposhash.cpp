@@ -10,16 +10,16 @@
 #include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.3 2005/11/15 18:58:18 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.4 2006/06/24 00:24:05 bmiller Exp $");
 
 
 /*********************** 
- * class qPositionHash *
+ * class qGrowHash     *
  ***********************/
 
 // default hash func
 template <class keyType> static guint16
-qPositionHash::defaultqPositionHashFunc
+qGrowHash::defaultqGrowHashFunc
 (keyType *key)
 {
   /* Adapted this from http://www.azillionmonkeys.com/qed/hash.html */
@@ -84,32 +84,32 @@ qPositionHash::defaultqPositionHashFunc
 }
 
 
-qPositionHash::qPositionHash
+qGrowHash::qGrowHash
 ()
 {
-  qPositionHash(NULL, NULL);
+  qGrowHash(NULL, NULL);
 }
-qPositionHash::qPositionHash
-(qPositionHashFunc h,
- qPositionInitFunc i)
+qGrowHash::qGrowHash
+(qGrowHash_hashFunc h,
+ qGrowHash_initFunc i)
 {
-  hashBuffer = new list<qPositionHashElt>[POSITION_HASH_BUCKETS];
+  hashBuffer = new list<qGrowHashElt>[POSITION_HASH_BUCKETS];
   numElts = 0;
-  hashCbFunc = h ? h : &qPositionHash::defaultqPositionHashFunc;
+  hashCbFunc = h ? h : &qGrowHash::defaultqGrowHashFunc;
   initCbFunc = i;
 }
 
-qPositionHash::~qPositionHash
+qGrowHash::~qGrowHash
 ()
 {  delete [] hashBuffer; }
 
-template <class keyType, class valType> valType *qPositionHash::getElt
+template <class keyType, class valType> valType *qGrowHash::getElt
 (const keyType *pos)
 {
   guint16 hashBucket = hashFunc(pos);
 
   // Find the elt in the bucket
-  list<qPositionHashElt*>::const_iterator iter;
+  list<qGrowHashElt*>::const_iterator iter;
   for (iter = hashBuffer[hashBucket].begin();
        iter != hashBuffer[hashBucket].end;
        iter++) {
@@ -119,10 +119,10 @@ template <class keyType, class valType> valType *qPositionHash::getElt
   return NULL;
 }
 
-template <class keyType, class valType> valType *qPositionHash::addElt
+template <class keyType, class valType> valType *qGrowHash::addElt
 (const keyType *pos)
 {
-  qPositionHashElt *newElt = posHeap.eltAlloc();
+  qGrowHashElt *newElt = posHeap.eltAlloc();
   if (!newElt)
     return False;
 
@@ -137,13 +137,13 @@ template <class keyType, class valType> valType *qPositionHash::addElt
   return newElt->posInfo;
 }
 
-qPositionHashElt *qPositionHash::rmElt
+qGrowHashElt *qGrowHash::rmElt
 (qPosition *pos)
 {
   guint16 hashBucket = pos.hashFunc();
 
   // Find the elt in the bucket
-  list<qPositionHashElt*>::const_iterator iter;
+  list<qGrowHashElt*>::const_iterator iter;
   for (iter = hashBuffer[hashBucket].begin();
        iter != hashBuffer[hashBucket].end;
        iter++) {
@@ -159,19 +159,19 @@ qPositionHashElt *qPositionHash::rmElt
 
 
 /******************************
- * class qPositionHashEltHeap *
+ * class qGrowHashEltHeap     *
  ******************************/
-qPositionHashEltHeap::qPositionHashEltHeap
+qGrowHashEltHeap::qGrowHashEltHeap
 ()
 {
-  currBlock = new qPositionHashElt[HEAP_INITIAL_BLOCK_SIZE];;
+  currBlock = new qGrowHashElt[HEAP_INITIAL_BLOCK_SIZE];;
   if (currBlock)
     currBlockAvailElts = HEAP_INITIAL_BLOCK_SIZE;
   else
     currBlockAvailElts = 0;
 }
 
-qPositionHashEltHeap::~qPositionHashEltHeap
+qGrowHashEltHeap::~qGrowHashEltHeap
 ()
 {
   while (!blocks2free->empty()) {
@@ -180,18 +180,18 @@ qPositionHashEltHeap::~qPositionHashEltHeap
   }
 }
 
-qPositionHashElt *qPositionHashEltHeap::eltAlloc
+qGrowHashElt *qGrowHashEltHeap::eltAlloc
 ()
 {
   if (currBlockAvailElts > 0) {
     return &currBlock[--currBlockAvailElts];
   } else if (!freeEltList.empty()) {
-    qPositionHashElt *rval = freeEltList.back();
+    qGrowHashElt *rval = freeEltList.back();
     freeEltList.pop_back();
     return rval;
   } else {
     blocks2free.push_front(currBlock);
-    currBlock = new qPositionHashElt[HEAP_BLOCK_SIZE];
+    currBlock = new qGrowHashElt[HEAP_BLOCK_SIZE];
     if (currBlock)
       currBlockAvailElts = HEAP_BLOCK_SIZE - 1; // subt. 1 cuz we're rtrning 1
     else
@@ -200,8 +200,8 @@ qPositionHashElt *qPositionHashEltHeap::eltAlloc
   }
 }
 
-void qPositionHashEltHeap::eltFree
-(qPositionHashElt* pos)
+void qGrowHashEltHeap::eltFree
+(qGrowHashElt* pos)
 {
   freeEltList.push_back(pos);
 }

@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: parameters.h,v 1.2 2005/11/19 08:22:33 bmiller Exp $
+// $Id: parameters.h,v 1.3 2006/06/24 00:24:05 bmiller Exp $
 
 
 #ifndef INCLUDE_parameters_h
@@ -32,17 +32,12 @@
 
 #define BASE_COMPLEXITY   36 /* Before applying any modifiers */
 
-// This macro is useful for defining an array of modifiers to a
-// position's complexity, based on the number of opponent's walls remaining
-#define WALL_COMPLEXITY_FUDGE \
-{ -45, -24, -4, -1, 0, 1, 1, 2, 2, 2, 2 }
-
 // This macro can define an array for boosting a player's position score
 // based on the number of walls he and his opponent have.
 // If not defined, scores are boosted one move per wall
 // ??? Based on vapor--needs empirical justification & tuning
 #define WALL_SCORE_FUDGE \
-{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 639 }, /*0*/\
+{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 630 }, /*0*/\
  { -72,   0,  69, 135, 200, 264, 327, 388, 449, 509, 568 }, /*1*/\
  {-139, -69,   0,  67, 132, 196, 259, 321, 382, 442, 501 }, /*2*/\
  {-205,-135, -67,   0,  66, 130, 193, 255, 316, 376, 435 }, /*3*/\
@@ -59,7 +54,7 @@
 // equal to the score boost--this is because the walls can't
 // hurt the player but could likely help
 #define WALL_COMPLEXITY_FUDGE \
-{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 639 }, /*0*/\
+{{   0,  72, 139, 205, 270, 334, 397, 459, 520, 580, 630 }, /*0*/\
  {  72,  64,  79, 145, 210, 274, 337, 398, 459, 519, 578 }, /*1*/\
  { 139,  79,  80,  78, 143, 207, 270, 332, 393, 453, 512 }, /*2*/\
  { 205, 145,  78,  88,  78, 142, 205, 267, 328, 388, 447 }, /*3*/\
@@ -82,5 +77,46 @@
  * every possible move will be examined for any ply visited.
  */
 #define MIN_POSITIONS_EXAMINED_PER_PLY 75
+
+/* This should equate to the maximum number of seconds conceivably required
+ * to perform an exhaustive evaluation of all positions 1 ply away.
+ * If there are more than this number of seconds available for the
+ * searcher class to work, then calls to searcher.search() should probably
+ * specify a min_breadth of 1.
+ * If there are fewer than this number of seconds, then the searcher
+ * mostly uses evaluations it has already performed to pick a move.
+ */
+#define MAX_TIME_FOR_1_PLY_SEARCH 4  /* ??? Needs empirical evidence of */ 
+#define MAX_TIME_FOR_2_PLY_SEARCH 16 /* run-time computation at startup */
+#define MAX_TIME_FOR_3_PLY_SEARCH ???
+#define MAX_TIME_FOR_4_PLY_SEARCH ???
+// Going to higher numbers of front-loaded N-ply breadth first searches is
+// of dubious value because many searched positions would be useless.
+
+// Used in qsearcher.cpp
+#define MAXTIME_PER_THINK_SERVICE 4000
+#define SUGTIME_PER_THINK_SERVICE 3000
+
+/* Define the following if we support tracking the # of position
+ * evaluations used to comprise the current position eval.
+ */
+// #define HAVE_NUM_COMPUTATIONS
+
+/* Define the following if we want to attempt leveraging the "spread" in
+ * required moves to reach varios finish squares in evaluating pos scores.
+ */
+// #define USE_FINISH_SPREAD_SCORE 1
+inline guint16 scoreSpread(gint8 *sortedFinishDistances)
+{
+  g_assert(sortedFinishDistances && *sortedFinishDistances);
+  guint16 spread = 0;
+  gint8 prevdist = *sortedFinishDistances;
+  ++sortedFinishDistances;
+  while (*sortedFinishDistances) {
+    spread += square(*sortedFinishDistances - dist);
+    prevdist = *(sortedFinishDistances++);
+  }
+  return spread;
+}
 
 #endif // INCLUDE_parameters_h

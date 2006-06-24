@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.5 2005/11/19 08:22:33 bmiller Exp $
+// $Id: qmovstack.h,v 1.6 2006/06/24 00:24:05 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
@@ -35,6 +35,30 @@
  * Note that as the game progresses, we can boost performance slightly by
  * regenerating the list of each wall move's "blocked" moves.  This can be
  * done by re-initializing the move stack from the current position.
+ *
+ * Further optimization: ???
+ * after we've created an initial lookahead tree (qcomptree), maintaining
+ * the list of possible wall moves might not be worthwhile as we walk up and
+ * down the lookahead tree.  The lookahead tree already has possible moves
+ * cached for previously visited positions.  Perhaps we should have the
+ * ability to "bind" and "unbind" calculation of wall moves, so we can
+ * turn off wall move list maintenance while walking up and down the
+ * lookahead tree.  When we reach and end node of the tree and want to
+ * start evaluating new territory, we'd call initWallMoveTable() for the
+ * current position, turn on the wall list functionality, and proceed.
+ *
+ * I suspect that, except for very deep positions, it's faster to just
+ * maintain the wall list.  Ballpark estimate figures:
+ *
+ * operations required to get list of possible wall moves for a position:
+ *   128 (maybe this can be optimized)
+ * 
+ * operations required to update wall list when a move is made:
+ *   4 x 2 (x2 because we have to remove the moves and then replace them later)
+ *
+ * So a back-of the envelope estimate is that we'd have to walk about 16
+ * plies from a pre-computed lookahead tree before turning off wall
+ * maintenance was worthwhile.  16 plies is a lot!
  */
 typedef struct _wallMoveInfo {
   qMove move;            // Which wall move is this? (0x0-0x7f)
@@ -81,7 +105,8 @@ class qMoveStack {
  public:
   // Initialize from an existing position
   // Calls initWallMoveTable() for you.
-  qMoveStack(qPosition *pos = &qInitialPosition);
+  qMoveStack(const qPosition* pos = &qInitialPosition,
+	     qPlayer player2move  = WhitePlayer);
 
   ~qMoveStack();
 
@@ -90,20 +115,22 @@ class qMoveStack {
    * not evaluated move) to generate updated (and hopefully shorter) lists.
    * A small performance boost might come from doing this during the opponent's
    * thinking time.  However, note that any time a move is "taken back," the
-   * move table cannot be used if it is newer than the move being taken back.
-   * If the move table is newer, then it will have to be regenerated from an
-   * older position before stepping back.
+   * move table would become useless if it was newer than move being taken
+   * back.  In that event, the wallMoveTable would have to be regenerated
+   * from the "old" position.
    */
-  void initWallMoveTable(qPosition*);
+  void initWallMoveTable(void);
 
+  qPlayer getPlayer2Move(void);
   void  pushMove(qPlayer        whoMoved,
 		 qMove          move,
 		 qPosition     *endPos=NULL); // Optional optimizer
 
   void  popMove(void);
-  qMove peekLastMove(void)   {return moveStack[sp-1].move;};
-  qPosition* getPos(void)    {return &(moveStack[sp].startPos);};
-  qPosition* getPrevPos(void){return &(moveStack[sp-1].pos);};
+  qMove peekLastMove(void)   {return moveStack[sp].move;};
+  qPosition* getPos(void)    {return &(moveStack[sp].resultingPos);};
+  qPosition* getPrevPos(void)
+    {return (sp > 0) ? &(moveStack[sp-1].resultingPos) : NULL;};
 
   // By setting the posinfo as we build a stack, we can avoid needing to
   // perform hash lookups again on the way back down the stack.
@@ -113,8 +140,9 @@ class qMoveStack {
   qPositionInfo *getPosInfo(void) { return moveStack[sp].posInfo; }
   void           setPosInfo(qPositionInfo *p) { moveStack[sp].posInfo = p; }
 
-  // Get list of possible wall moves from current location
-  const vector<qMove> getPossibleWallMoves();
+  // Get list of possible wall moves from current location, appending them to
+  // the back of the passed-in list.  Return true on success, false otherwise.
+  bool getPossibleWallMoves(qMoveList *moveList);
 
 
  private:
@@ -126,6 +154,14 @@ class qMoveStack {
   qWallMoveInfoList possibleWallMoves;
 };
 
+
+
+/***************************************************
+ * Utility wrapper funcs                           *
+ *                                                 *
+ * These functions "wrap" the qMoveStack class and *
+ * add useful functionality.                       *
+ ***************************************************/
 
 /* Note: because we want to use the "possible wall move" optimization,
  * we need to record all moves in our stack--we can't keep actual moves
@@ -139,31 +175,52 @@ class qMoveStack {
  * when making a real move.
  */
 
-typedef qPositionHash<qPosition, qPositionInfo> qPosInfoHash;
 enum { flag_WhiteToMove=0x01, flag_BlackToMove=0x02 };
 
 // These funcs set the positionHash in the qPosHash to track which moves are
 // currently under evaluation.
 // This uses bits 1 & 2 in the qPositionInfo qPositionFlag.
-qPositionInfo *pushMove(qMoveStack    *movStack,
-			qPositionInfo *posInfo,  // optimizer
-			qPosHash      *posHash,  // reqd if posInfo==NULL
-			qPlayer        whoMoved, //   From here down same
-			qMove          move,     //   as qMoveStack
-			qPosition     *pos);
+// MT NOTE:  depending on the posHash (& posInfo) for tagging which
+// positions are in the stack is convenient, but prevents multiple
+// qMoveStacks from operating on one posHash.  We should implement
+// a data type as part of the qMoveStack for checking if moves are in
+// the stack.  ???
+qPositionInfo *pushMove(qMoveStack        *movStack,
+			qPositionInfo     *posInfo,  // optimizer
+			qPositionInfoHash *posHash,  // reqd if posInfo==NULL
+			qPlayer            whoMoved, //   From here down same
+			qMove              move,     //   as qMoveStack
+			qPosition         *pos);
 
 void  popMove(qMoveStack *movStack);
 
 // Returns if a given position is in the stack
-bool isInMoveStack(qPositionInfo *posInfo, qPlayer player);
+bool private_isInMoveStack(qPositionInfo *posInfo,
+			   qPlayer        player);
+inline bool isInMoveStack
+(qMoveStack    *movStack,
+ qPositionInfo *posInfo,
+ qPlayer        player)
+{
+  return private_isInMoveStack(posInfo, player);
+};
 
 // Returns if this position is in the move stack with white to move
-bool isWhiteMoveInStack(qPositionInfo posInfo);
+bool private_isWhiteMoveInStack(qPositionInfo posInfo);
+inline bool isWhiteMoveInStack
+(qMoveStack *moveStack,
+ qPositionInfo posInfo)
+{
+  return private_isWhiteMoveInStack(posInfo);
+};
 
 // Returns if this position is in the move stack with black to move
-bool isBlackMoveInStack(qPositionInfo posInfo);
-
-
+bool private_isBlackMoveInStack(qPositionInfo posInfo);
+inline bool isBlackMoveInStack
+(qMoveStack *moveStack,
+ qPositionInfo posInfo)
+{
+  return private_isBlackMoveInStack(posInfo);
 };
 
 #endif // INCLUDE_movstack_h

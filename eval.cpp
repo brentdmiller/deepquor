@@ -13,7 +13,7 @@
 #include <qmovstack.h>
 #include <parameters.h>
 
-IDSTR("$Id: eval.cpp,v 1.3 2005/11/19 08:22:33 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.4 2006/06/24 00:24:05 bmiller Exp $");
 
 #define qNO_PATH -1
 
@@ -53,54 +53,52 @@ guint16 CBhashFunc(qPosition p)
 }
 void CBinitFunc(qPositionInfo posInfo, qPosition p)
 {
-  posInfo->clearEval(p); ???
-  posInfo->pos = *pos;
+  posInfo->initEval();
+  /* posInfo->pos = *p; position not stored in posInfo */
 }
 
 
-typedef struct _qDijkstra {
-  int      moves;  // out: returned number of moves required
-  guint16  spread; // out: rating of how spread apart possible finishes are
 
-  /* Maybe allow the following
-   * bool          useCachedGraph;
-   * qCalcGraphRec graph;
-   */
-} qDijkstraArg;
-#define qDarg_CLEAR_CACHE(d) ((d).useCachedGraph=False) (1)
-
-QDecl(bool, qDijkstra, (qPlayer, qDijkstraOut*));
-
-bool qPositionHashElt::ratePositionByComputation
+qPositionEvaluation const *ratePositionByComputation
 (qPlayer player2move, qPosition pos, qPositionInfo *posInfo)
 /****************************************************************************
  *
- * Examine position and populate *out with score/complexity/computations
+ * Examine position and populate *posInfo with score/complexity/computations
  *  of position's evaluation.
- * Fills in this->evaluation[player2move] (and possibly other player too)
+ * Fills in posInfo->evaluation[player2move] (and possibly other player too)
  * Returns:
- *  True  - legal position & evaluation completed
- *  False - illegal position
+ *  NULL - illegal position
+ *  non-NULL - legal position & evaluation completed
  *
  ****************************************************************************/
 {
   int     distance[2];
-  guint16 spread[2];
-  qDijkstraArg darg;
   qPlayer opponent(player2move.getOtherPlayerId);
+  qDijkstraArg darg;
+
+#ifdef USE_FINISH_SPREAD
+  guint16 spread[2];
+  darg.getAllRoutes = TRUE;
+#else
+  darg.getAllRoutes = FALSE;
+#endif
 
   for (int player=0; player<=BLACK; ++player) {
     evaluation[player].computations = 1;
     evaluation[player].complexity = BASE_COMPLEXITY +
-      WALL_COMPLEXITY(numWallsLeft(player), numWallsLeft(opponent)));
+      WALL_COMPLEXITY(numWallsLeft(player), numWallsLeft(opponent));
 
     /* Use Dijkstra algorithm to find shortest path for each player */
     qDarg_CLEAR_CACHE(darg);
+    darg.player = player;
+    darg.pos    = &pos;
 
     if (qDijkstra(player, &darg))
       {
-	distance[player] = darg.score;
-	spread[player]   = darg.spread;
+	distance[player] = darg.dist[0];
+#ifdef USE_FINISH_SPREAD
+	spread[player]   = scoreSpread(darg.dist);
+#endif
       }
     else
       {
@@ -119,9 +117,10 @@ bool qPositionHashElt::ratePositionByComputation
 	  pos.setWhitePos(oldBlack);
 	}
 
-	// Use cached calculation grid???
-	// Update cached calc graph to reflect removed opponent & recalc
-	/*(???);*/
+	// I was tempted to try recycling previous graph used to compute
+	// Dijkstra of neighboring positions, and find a way to just compute
+	// the modifications to the graph, but decided it was too hard.  This
+	// is described in a comment in qcomptree.h
 
 	bool pathFound;
 	pathFound = qDijkstra(player, &darg);
@@ -135,11 +134,11 @@ bool qPositionHashElt::ratePositionByComputation
 	    /* Still no path exists; this is not a legal position */
 	    setPositionIsIllegal();
 	    evaluation[0] = evaluation[1] = {0, 0, 1};
-	    return False;
+	    return NULL;
 	  }
 	// Path exists but is blocked, so our score isn't as accurate.
 	evaluation[player].complexity += BLOCKED_POSITION_FUDGE;
-    }
+      }
   }
 
   {
@@ -148,6 +147,7 @@ bool qPositionHashElt::ratePositionByComputation
        WALL_SCORE(pos.numWhiteWallsLeft(), pos.numBlackWallsLeft()) :
        WALL_SCORE(pos.numBlackWallsLeft(), pos.numWhiteWallsLeft()));
 
+#ifdef USE_FINISH_SPREAD_SCORE
     // Add in a factor for the spread in moves to all avail. end squares,
     // This is only a factor if the opponent actually has walls.
     // Use some multiplier for this???
@@ -167,6 +167,10 @@ bool qPositionHashElt::ratePositionByComputation
       (goal_line_spread_factor[player] - goal_line_spread_factor[opponent])/2;
     complexity_adjust =
       goal_line_spread_factor[player] + goal_line_spread_factor[opponent];
+#else
+    score_adjust = 0;
+    complexity_adjust = 0;
+#endif
 
     tmp = tmp - score_adjust;
 
@@ -196,16 +200,14 @@ bool qPositionHashElt::ratePositionByComputation
       evaluation[opponent].complexity = base_complexity + complexity_adjust;
     }
   }
-  return True;
+  return &(evaluation[player]);
 }
 
-qPositionInfo *ratePositionFromNeighbors
+qPositionInfo  *ratePositionFromNeighbors
 (qPosition     *pos,
  qPlayer        player2move,
  qPositionInfo *posInfo,      // optional optimization
- qPositionEvaluation *peval,     // populated upon return
-                      moveList,  // populated upon return
-                      evalList)  // populated upon return
+ qEvalIterator *evalItor)
 /****************************************************************************
  *
  * Examine position and populate *out with score/complexity/computations
@@ -215,10 +217,37 @@ qPositionInfo *ratePositionFromNeighbors
  *
  ****************************************************************************/
 {
+  std::auto_ptr<qMoveList> mvList(new mvList(NULL));
+
   // 1. Calculate all legal moves
-  // 2. Lookup eval of each legal move
+  if (!evalItor) {
+
+    // Create an evalItor from pos
+    getPlayableMoves(pos, NULL, mvList.get());
+
+    // Use a smart pointer???
+    evalItor = qEvalItorFromMvContainer(&mvList,
+					pos,
+					player2move
+					evalHash); // ???
+  }
+
+
+  // 2. Look up eval of each legal move
   //    (or zero score if resulting position seen)
   //    rateByComputation for new positions
+
+  // Can this be done in one pass??? */
+  qEvalIterator currentMove;
+  
+  for (currentMove  = qMoveList->begin(), bestMove = *currentMove;
+       currentMove != qMoveList->end();
+       currentMove++)
+    {
+      if ((*currentMove)
+      bestMove = 
+    }
+
   // 3. Sort all evals (how?  score + complexity/20?)
   // 4. Combine evals into current positions eval.
   //    ??? Take into accont minmax of last two plies?

@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
+// $Id: qtypes.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -63,6 +63,7 @@ typedef gint8 qDirection;
 class qSquare {
  public:
   guint8 squareNum;
+  const static maxSquareNum = 80;
 
   // SQUARE_VAL macro included to assist defining qInitialPosition in qpos.cpp
 #define SQUARE_VAL(x,y) ((x)+9*(y))
@@ -74,7 +75,7 @@ class qSquare {
 
   qSquare(guint8 squareId)
     {
-      assert(squareId <= 80);
+      assert(squareId <= maxSquareNum);
       squareNum = squareId;
     }
 
@@ -103,13 +104,16 @@ typedef enum { COL=0, ROW=1 } RowOrCol;
 class qPlayer {
  private:
   gint8 playerId;
+
   /* First some basic types */
-  
  public:
   enum { WhitePlayer=0, BlackPlayer=1, NoPlayer=-1, OtherNoPlayer=2 };
 
   // Construct with qPlayer::WhitePlayer or qPlayer::BlackPlayer
-  qPlayer(gint8 playerId);
+  qPlayer(gint8 playerId = NoPlayer);
+
+  // Factory method
+  qPlayer    otherPlayer()  { return qPlayer(1-playerId); }
 
   // Change the current instance
   void    changePlayer()  { playerId = 1-playerId; }
@@ -155,6 +159,8 @@ class qMove {
   // Constructor using a previously encoded move
   qMove(guint8 mv) { move = mv; };
 
+  // Constructor for a "NULL" move;
+  qMove() { move = 0; }
 
   // Members for accessing wall moves
   inline bool isWallMove()      { return   move&0x01;      };
@@ -169,6 +175,9 @@ class qMove {
 
   // Gets the binary representation of a move (in one byte)
   inline guint8 getEncoding(void) { return move; };
+
+  // False for moves that were constructed but not initialized, else true
+  bool   exists(void) { return move; };
 };
 
 /* Notes:

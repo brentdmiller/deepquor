@@ -8,7 +8,7 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.5 2005/11/19 08:22:33 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.6 2006/06/24 00:24:05 bmiller Exp $");
 
 
 /***********************
@@ -16,26 +16,41 @@ IDSTR("$Id: qmovstack.cpp,v 1.5 2005/11/19 08:22:33 bmiller Exp $");
  ***********************/
 
 qMoveStack::qMoveStack
-(qPosition *pos)
+(qPosition *pos, qPlayer player2move)
 {
   sp = 0;
-  moveStack[sp].pos = *pos;
+  moveStack[sp].resultingPos = *pos;
   moveStack[sp].move = -1;
   moveStack[sp].wallMovesBlockedByMove = NULL;
-  initWallMoveTable(pos);
+  moveStack[sp].playerMoved = qPlayer(player2move.getOtherPlayerId());
+  initWallMoveTable();
 }
 
 qMoveStack::~qMoveStack() {
   return;
 };
 
-void qMoveStack::initWallMoveTable(qPosition *pos)
+
+/* Good optimizations:
+ * !!! Prune "dead space" from the list of possible wall moves (well,
+ *     everything after the first "dead" move).
+ * !!! Keep separate lists for white and black???
+ */
+void qMoveStack::initWallMoveTable()
 {
+  qPosition pos = moveStack[0].pos;
   int rowColNo, posNo;
   int rowOrCol;
   qMove mv;
   qWallMoveInfo *thisMove;
 
+  // Can't revise the wallMoveTable with a bunch of state in the stack
+  if (sp != 0) {
+    g_assert(sp==0);
+    return;
+  }
+
+  // 1st pass:  construct list of all possible wall moves.
   for (rowOrCol=1; rowOrCol >= 0; rowOrCol++)
     for (rowNo=7; rowNo >= 0; rowNo++)
       for (posNo=7; posNo >= 0; posNo++)
@@ -52,7 +67,7 @@ void qMoveStack::initWallMoveTable(qPosition *pos)
 	    thisMove->next = thisMove->prev = NULL;
 	}
 
-  // 2nd pass, noting for each possible move which future wall moves it blocks
+  // 2nd pass: note for each possible move which future wall moves it blocks
 #define MAYBE_ELIMINATE(mv) if((mv)->possible){thisMove->eliminates.push(mv);}
   for (thisMove=possibleWallMoves.getHead();
        thisMove;
@@ -231,12 +246,12 @@ inline static bool isInMoveStack
 
 // These funcs set the positionHash in the qPosHash to track which moves are
 // currently under evaluation.
-qPositionInfo *pushMove(qMoveStack    *movStack,
-			qPositionInfo *posInfo,  // optimizer
-			qPosInfoHash  *posHash,  // reqd if posInfo==NULL
-			qPlayer        whoMoved, //   From here down same
-			qMove          move,     //   as qMoveStack
-			qPosition     *pos);
+qPositionInfo *pushMove(qMoveStack        *movStack,
+			qPositionInfo     *posInfo,  // optimizer
+			qPositionInfoHash *posHash,  // reqd if posInfo==NULL
+			qPlayer            whoMoved, //   From here down same
+			qMove              move,     //   as qMoveStack
+			qPosition         *pos);
 
 inline void popMove(qMoveStack *movStack)
 {
@@ -246,19 +261,42 @@ inline void popMove(qMoveStack *movStack)
   clearMoveInEval(positionEvalsHash->getElt(frame->pos), frame->playerMoved);
 }
 
-inline bool isInMoveStack
+/* This "private" versions of funcs don't need the movStack arg in our
+ * current implementation.  Future implementations, though, will probably
+ * require the movStack arg.  We've used inline functions in qmovstack.h
+ * to discard the first arg and call a private_* version of these funcs
+ * with one fewer arg.  When these funcs are changed to use a movStack
+ * arg then we can remove "private_" from their names and get rid of the
+ * inline versions in the header???
+ */
+inline bool private_isInMoveStack
 (qPositionInfo posInfo, qPlayer p)
 { return (isInMoveStack(posInfo) &&
 	  (p.isWhite() ? isWhiteMoveInStack(posInfo) :
 	   isBlackMoveInStack(posInfo)))};
 
-inline bool isWhiteMoveInStack
+inline bool private_isWhiteMoveInStack
 (qPositionInfo posInfo)
 { return (isInMoveStack(posInfo) &&
           (posInfo.getPositionFlag() & flag_WhiteToMove))};
 
-inline bool isBlackMoveInStack
+inline bool private_isBlackMoveInStack
 (qPositionInfo posInfo)
 { return (isInMoveStack(posInfo) &&
 	  (posInfo.getPositionFlag() & flag_BlackToMove))};
 
+
+bool qMoveStack::getPossibleWallMoves(qMoveList *moveList)
+{
+  if (!moveList)
+    return false;
+
+  qWallMoveInfo *c = possibleWallMoves->getHead();
+
+  while (c) {
+    g_assert(c->possible == true);
+    moveList->push_back(c->move);
+    c = c->next;
+  }
+  return true;
+}
