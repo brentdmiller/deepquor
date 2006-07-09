@@ -6,14 +6,14 @@
  */
 
 
-#include <qtypes.h>
-#include <qposition.h>
-#include <qposinfo.h>
-#include <qposhash.h>
-#include <qmovstack.h>
-#include <parameters.h>
+#include "qtypes.h"
+#include "qposition.h"
+#include "qposinfo.h"
+#include "qposhash.h"
+#include "qmovstack.h"
+#include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.4 2006/06/24 00:24:05 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.5 2006/07/09 06:37:38 bmiller Exp $");
 
 #define qNO_PATH -1
 
@@ -57,6 +57,18 @@ void CBinitFunc(qPositionInfo posInfo, qPosition p)
   /* posInfo->pos = *p; position not stored in posInfo */
 }
 
+inline guint16 scoreSpread(gint8 *sortedFinishDistances)
+{
+  g_assert(sortedFinishDistances && *sortedFinishDistances);
+  guint16 spread = 0;
+  gint8 prevdist = *sortedFinishDistances;
+  ++sortedFinishDistances;
+  while (*sortedFinishDistances) {
+    spread += square(*sortedFinishDistances - prevdist);
+    prevdist = *(sortedFinishDistances++);
+  }
+  return spread;
+}
 
 
 qPositionEvaluation const *ratePositionByComputation

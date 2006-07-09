@@ -5,10 +5,10 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposinfo.h,v 1.3 2005/11/19 08:22:33 bmiller Exp $
+// $Id: qposinfo.h,v 1.4 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
-#define INCLUDE_posinfo_h
+#define INCLUDE_posinfo_h 1
 
 #include "qtypes.h"
 
@@ -79,17 +79,17 @@ class qPositionInfo {
   bool          initEval(qPlayer p);    // Initialize eval to !exists for p
   bool          initEval();             // Initialize to !exists for both
 
-  inline qPositionEvaluation const *get(qPlayer p);
+  inline qPositionEvaluation *get(qPlayer p) const;
 
   void set(qPlayer p, qPositionEvaluation const *neweval);
 
-  inline gint16 const getScore(qPlayer p)
+  inline gint16       getScore(qPlayer p) const
     { return evaluation[p.getPlayerId()].score; };
 
   inline void         setScore(qPlayer p, gint16 val)
     { evaluation[p.getPlayerId()].score=val; };
 
-  inline guint8 const getComplexity(qPlayer p)
+  inline guint8       getComplexity(qPlayer p) const
     { return evaluation[p.getPlayerId()].complexity;};
 
   inline void         setComplexity(qPlayer p, guint8 val)
@@ -123,12 +123,12 @@ class qPositionInfo {
 
   // isPosExceptional - return if position is illegal or has flags set
   // Use isPosExceptional 1st for fast comparison; then use other tests
-  inline bool isPosExceptional()     { return (flagPosException != 0); };
+  inline bool isPosExceptional() const { return (flagPosException != 0); };
 
-  inline bool isPosLegal()           { return (flagPosException >= 0); };
+  inline bool isPosLegal()       const { return (flagPosException >= 0); };
   inline void setPositionIsIllegal() { flagPosException = flag_PosIllegal; };
 
-  gint8 getPositionFlag()            { return(flagPosException); }
+  gint8 getPositionFlag()        const { return(flagPosException); }
   gint8 setPositionFlagBits(guint8 bitmask)
     { assert(flagPosException >= 0);
       return (flagPosException |= bitmask);

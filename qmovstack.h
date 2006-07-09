@@ -1,22 +1,22 @@
 /*
- * Copyright (c) 2005
+ * Copyright (c) 2005-2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.6 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qmovstack.h,v 1.7 2006/07/09 06:37:38 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
-#define INCLUDE_movstack_h
+#define INCLUDE_movstack_h 1
 
 #include "qtypes.h"
 #include "qposition.h"
-#include "qposhash.h"
 #include "qposinfo.h"
+#include "qposhash.h"
 #include "parameters.h"
-#include <vector>
+#include <deque>
 
 
 /* Idea:
@@ -60,16 +60,7 @@
  * plies from a pre-computed lookahead tree before turning off wall
  * maintenance was worthwhile.  16 plies is a lot!
  */
-typedef struct _wallMoveInfo {
-  qMove move;            // Which wall move is this? (0x0-0x7f)
-  bool possible;         // Is this move currently possible?
-
-  // List of which moves get eliminated by this move
-  class qWallMoveInfoList *eliminates;
-
-  struct _wallMoveInfo *prev;
-  struct _wallMoveInfo *next;
-} qWallMoveInfo;
+typedef struct _wallMoveInfo qWallMoveInfo;
 
 class qWallMoveInfoList {
  public:
@@ -79,8 +70,8 @@ class qWallMoveInfoList {
 
   struct _wallMoveInfo *pop();
 
-  qWallMoveInfo *getHead(void)  { return head; };
-  qWallMoveInfo *getTail(void)  { return tail; };
+  qWallMoveInfo *getHead(void)  const { return head; };
+  qWallMoveInfo *getTail(void)  const { return tail; };
   void           clearList(void){ head = tail = NULL; };
 
  private:
@@ -88,9 +79,24 @@ class qWallMoveInfoList {
   qWallMoveInfo *tail;
 };
 
+struct _wallMoveInfo {
+  qMove move;            // Which wall move is this? (0x0-0x7f)
+  bool possible;         // Is this move currently possible?
+
+  // List of which moves get eliminated by this move
+  class qWallMoveInfoList eliminates;
+
+  qWallMoveInfo *prev;
+  qWallMoveInfo *next;
+};
+
+
+typedef std::deque<qMove> qMoveList; 
+typedef std::deque<qMove>::iterator qMoveListIterator;
 
 
 typedef struct _qMoveStackFrame {
+  _qMoveStackFrame() : resultingPos(NULL, NULL, qSquare(0), qSquare(0),0,0) { }
   qPosition         resultingPos;
   qMove             move;
   qPlayer           playerMoved;
@@ -106,7 +112,7 @@ class qMoveStack {
   // Initialize from an existing position
   // Calls initWallMoveTable() for you.
   qMoveStack(const qPosition* pos = &qInitialPosition,
-	     qPlayer player2move  = WhitePlayer);
+	     qPlayer player2move  = qPlayer::WhitePlayer);
 
   ~qMoveStack();
 
@@ -121,28 +127,29 @@ class qMoveStack {
    */
   void initWallMoveTable(void);
 
-  qPlayer getPlayer2Move(void);
   void  pushMove(qPlayer        whoMoved,
 		 qMove          move,
 		 qPosition     *endPos=NULL); // Optional optimizer
-
   void  popMove(void);
-  qMove peekLastMove(void)   {return moveStack[sp].move;};
-  qPosition* getPos(void)    {return &(moveStack[sp].resultingPos);};
-  qPosition* getPrevPos(void)
+  qMove peekLastMove(void) const   {return moveStack[sp].move;};
+
+  const qPosition* getPos(void) const {return &(moveStack[sp].resultingPos);} ;
+  const qPosition* getPrevPos(void) const
     {return (sp > 0) ? &(moveStack[sp-1].resultingPos) : NULL;};
+  qPlayer getPlayer2Move(void) const
+    { return moveStack[sp].playerMoved.otherPlayer(); };
 
   // By setting the posinfo as we build a stack, we can avoid needing to
   // perform hash lookups again on the way back down the stack.
   // We can assume no posInfo records that were in the stack got harvested
   // to free memory because anything under evaluation cannot be cleaned
   // or we'll lose track of any possible cycles in our thought.
-  qPositionInfo *getPosInfo(void) { return moveStack[sp].posInfo; }
+  qPositionInfo *getPosInfo(void) const { return moveStack[sp].posInfo; }
   void           setPosInfo(qPositionInfo *p) { moveStack[sp].posInfo = p; }
 
   // Get list of possible wall moves from current location, appending them to
   // the back of the passed-in list.  Return true on success, false otherwise.
-  bool getPossibleWallMoves(qMoveList *moveList);
+  bool getPossibleWallMoves(qMoveList *moveList) const;
 
 
  private:
@@ -206,19 +213,19 @@ inline bool isInMoveStack
 };
 
 // Returns if this position is in the move stack with white to move
-bool private_isWhiteMoveInStack(qPositionInfo posInfo);
+bool private_isWhiteMoveInStack(qPositionInfo *posInfo);
 inline bool isWhiteMoveInStack
 (qMoveStack *moveStack,
- qPositionInfo posInfo)
+ qPositionInfo *posInfo)
 {
   return private_isWhiteMoveInStack(posInfo);
 };
 
 // Returns if this position is in the move stack with black to move
-bool private_isBlackMoveInStack(qPositionInfo posInfo);
+bool private_isBlackMoveInStack(qPositionInfo *posInfo);
 inline bool isBlackMoveInStack
 (qMoveStack *moveStack,
- qPositionInfo posInfo)
+ qPositionInfo *posInfo)
 {
   return private_isBlackMoveInStack(posInfo);
 };

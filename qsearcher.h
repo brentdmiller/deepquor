@@ -5,20 +5,18 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qsearcher.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
-#define INCLUDE_searcher_h
+#define INCLUDE_searcher_h 1
 
 
 #include "qtypes.h"
 #include "qposition.h"
+#include "qmovstack.h"
 #include "qposinfo.h"
 #include "qposhash.h"
-#include "qmovstack.h"
 #include "qcomptree.h"
-#include "parameters.h"
-#include "getmoves.h"
 
 /* Given a position, searches, within specified constraints, for the
  * best possible move.
@@ -165,7 +163,7 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
     ++itor;
   };
 
-  qPositionEvaluation const *val() {
+  qPositionEvaluation const *val() const {
     if (itor == end)
       return NULL;
     {
@@ -176,8 +174,8 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
       return (qPositionEvaluation const*)info.get(player);
     }
   };
-  bool atEnd() {
-    return (itor == end ? true : false);
+  bool atEnd() const {
+    return (itor == end ? TRUE : FALSE);
   };
 };
 

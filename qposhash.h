@@ -5,13 +5,17 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposhash.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qposhash.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_poshash_h
-#define INCLUDE_poshash_h
+#define INCLUDE_poshash_h 1
 
+#include "qtypes.h"
+#include "qposinfo.h"
+#include "qposition.h" /* Required for qPositionInfoHash at end */
 #include <vector>
 #include <list>
+#include "parameters.h" /* Needed for inlined def of eltAlloc */
 using namespace std;
 
 // #include <glib.h>
@@ -64,15 +68,17 @@ using namespace std;
 
 template <class keyType, class valType> class qGrowHash {
 public:
-  typedef guint16 (*qGrowHash_hashFunc)(keyType*);
-  typedef void    (*qGrowHash_eltInitFunc)(valType*, keyType*);
+  static const guint16   NumBuckets; // Useful for writing hash funcs
+  typedef guint16 (*qGrowHash_hashFunc)(const keyType*);
+  typedef void    (*qGrowHash_eltInitFunc)(valType*, const keyType*);
 
   // constructor using specified hashFunc
   // Note that the value used for hashing will actually be
   // the hashFunc's return value modulo POSITION_HASH_BUCKETS
+  // Default hashFunc does "pretty good" hashing based on sizeof(keyType)
   qGrowHash
-    (qGrowHash_hashFunc hashCallbackFunc,
-     qGrowHash_eltInitFunc initCallbackFunc);
+    (qGrowHash_hashFunc hashCallbackFunc=(&qGrowHash::defaultqGrowHashFunc),
+     qGrowHash_eltInitFunc initCallbackFunc=NULL);
 
   /* Make constructor take paramaters as args???
    *  int32_t           numHashBuckets,  // approx. mem/sizeof(key + val)
@@ -80,20 +86,19 @@ public:
    *  int32_t           heapGrowSize;    // 1024 something like 1024 elts
    */
 
-  // constructor using default hashFunc & parameters
-  // Default hashFunc does "pretty good" hashing based on sizeof(keyType)
-  qGrowHash();
-
   ~qGrowHash();
 
   // Locate an existing position
-  valType* getElt(const keyType *pos);
+  valType* getElt(const keyType *pos) const;
 
   // Acquires a new elt
   valType* addElt(const keyType *pos);
 
+  valType* getOrAddElt(const keyType *pos)
+  { valType *rval = getElt(pos); return rval ? rval : addElt(pos); };
+
   // free elt so getElt won't find it
-  bool           rmElt(const keyType *pos);
+  bool     rmElt(const keyType *pos);
 
  private:
   /************************************************************************
@@ -104,11 +109,24 @@ public:
    * destructors).  Otherwise we'll have to perform initialization/       *
    * destruction  for all the inidividual elts.                           *
    ************************************************************************/
-  typedef struct _qGrowHashElt {
-    public:
+  class qGrowHashElt {
+    // Note that I've deliberately avoided constructors or destructors;
+    // instances of this object should only be created in large arrays that
+    // are initialized by eltAlloc()
+  public:
     keyType         pos;
     valType         posInfo;
-  } qGrowHashElt;
+  };  // HACK ALERT!!! See below:
+
+  // I want to use the qGrowHashElt type as elements in a list<qGrowHashElt*>;
+  // however, C++ won't allow me to use a template as the type in a
+  // template parameter (unless the parameter is explicitly created to take
+  // a template template parameter).
+  typedef list<void*> qGrowHashEltList;
+  inline void*         hackifyGrowHashEltType (qGrowHashElt *x) const
+    { return static_cast<void*>(x); }
+  inline qGrowHashElt* unhackGrowHashEltType  (void *x) const
+    { return static_cast<qGrowHashElt*>(x); }
 
   /***************************************************************************
    * private subclass qGrowHashEltHeap                                       *
@@ -117,15 +135,38 @@ public:
    * freed elts regardless of from which allocation block they came.  Once
    * the current block runs out of elts, then we'll start drawing from the
    * free list until there are no more.
-   * If the current block and free list both run out of space, we push the
-   * current block onto the blocks2free list and allocate a new block.
+   * If the current block and free list both run out of space, we just
+   * another "currBlock" from which to draw new elts.  Blocks are kept in
+   * a blocks2free list so we can remember to free them all later.
    **************************************************************************/
   class qGrowHashEltHeap {
   public:
     qGrowHashEltHeap();
     ~qGrowHashEltHeap();
 
-    qGrowHashElt *eltAlloc();    // returns uninitialized memory
+    // ??? I couldn't figure out how to define this in a .cpp file with the
+    // rval type being of local scope, so I've inlined it.  See commented-out
+    // code in qposhash.cpp
+    qGrowHashElt *eltAlloc() // returns uninitialized memory
+      {
+	if (currBlockAvailElts > 0) {
+	  return &currBlock[--currBlockAvailElts];
+	} else if (!freeEltList.empty()) {
+	  qGrowHashElt *rval = freeEltList.back();
+	  freeEltList.pop_back();
+	  return rval;
+	} else {
+          //currBlock = new qGrowHashElt[HEAP_BLOCK_SIZE];
+          currBlock = (qGrowHashElt*)calloc(HEAP_BLOCK_SIZE, sizeof(qGrowHashElt));
+	  if (currBlock) {
+	    blocks2free.push_front(currBlock);
+	    currBlockAvailElts = HEAP_BLOCK_SIZE - 1; // subt. 1 cuz we're rtrning 1
+	  } else
+	    currBlockAvailElts = 0;
+	  return &currBlock[currBlockAvailElts];
+	}
+      }
+
     void eltFree(qGrowHashElt*);
 
   private:
@@ -142,12 +183,12 @@ public:
   };
 
   guint32 numElts;
-  list<qGrowHashElt*>  *hashBuffer; // Array of qGrowHashElt buckets
+  qGrowHashEltList     *hashBuffer; // Array of qGrowHashElt buckets
   qGrowHashEltHeap      posHeap;    // We get unallocated Elts from here
   qGrowHash_hashFunc    hashCbFunc; // func for sorting keys into buckets
   qGrowHash_eltInitFunc initCbFunc; // func for initializing new elts
 
-  static guint16 defaultqGrowHashFunc(keyType *);
+  static guint16 defaultqGrowHashFunc(const keyType *);
 };
 
 

@@ -10,7 +10,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.5 2006/06/24 00:24:05 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.6 2006/07/09 06:37:38 bmiller Exp $");
 
 // Convenience utility
 guint32 milliseconds_since2000(void);
@@ -47,7 +47,7 @@ public:
     return compTree->getNodeEval(childId);
   };
   bool atEnd() {
-    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTree::qComputationTreeNode_invalid) ? false : true;
+    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTree::qComputationTreeNode_invalid) ? FALSE : TRUE;
   };
 };
 
@@ -249,7 +249,7 @@ qSearcher::iSearch
       gint16 minScore;
       qComputationTree::qComputationTreeNodeId curPosId;
       qPositionEvaluation const *curEval;
-      bool worthRefining = false;
+      bool worthRefining = FALSE;
 
       minScore = (qScore_lost + bestEval->complexity >= bestEval->score) ?
 	qScore_lost : (bestEval->score - bestEval->complexity);
@@ -271,7 +271,7 @@ qSearcher::iSearch
 	      break; // No more contendors
 
 	    if (curEval->complexity > slop) {
-	      worthRefining = true;
+	      worthRefining = TRUE;
 	      break; // 
 	    }
 	  }

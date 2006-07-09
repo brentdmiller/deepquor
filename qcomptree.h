@@ -1,19 +1,18 @@
 /*
- * Copyright (c) 2005
+ * Copyright (c) 2005-2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.2 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qcomptree.h,v 1.3 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
-#define INCLUDE_comptree_h
+#define INCLUDE_comptree_h 1
 
 
 #include "qtypes.h"
 #include "qposinfo.h"
-#include "parameters.h"
 #include <vector>
 
 
@@ -38,7 +37,7 @@ class qComputationTree {
   void initializeTree();
 
   // Returns the root node
-  qComputationTreeNodeId getRootNode();
+  qComputationTreeNodeId getRootNode() const;
 
   // addNodeChild: 
   // Adds an edge to the current node, leading to a new child node
@@ -52,20 +51,20 @@ class qComputationTree {
 
   // Returns 0 if no such child;
   // Children are ordered according to eval.score + eval.complexity
-  qComputationTreeNodeId getNthChild(qComputationTreeNodeId node, guint8 n);
-  qComputationTreeNodeId getTopScoringChild(qComputationTreeNodeId node);
+  qComputationTreeNodeId getNthChild(qComputationTreeNodeId node, guint8 n) const;
+  qComputationTreeNodeId getTopScoringChild(qComputationTreeNodeId node) const;
 
-  qComputationTreeNodeId getNodeParent(qComputationTreeNodeId node);
+  qComputationTreeNodeId getNodeParent(qComputationTreeNodeId node) const;
 
-  qPositionInfo *getNodePosInfo(qComputationTreeNodeId node);
+  qPositionInfo *getNodePosInfo(qComputationTreeNodeId node) const;
   void setNodePosInfo(qComputationTreeNodeId node, qPositionInfo *posInfo);
 
   // Note: using setEval alters the order of the parent node's child list 
   void setNodeEval(qComputationTreeNodeId node,
 		   qPositionEvaluation const *eval);
-  qPositionEvaluation const *getNodeEval(qComputationTreeNodeId node);
+  qPositionEvaluation const *getNodeEval(qComputationTreeNodeId node) const;
 
-  qMove getNodePrecedingMove(qComputationTreeNodeId node);
+  qMove getNodePrecedingMove(qComputationTreeNodeId node) const;
 
  private:
   /* qComputationNode class

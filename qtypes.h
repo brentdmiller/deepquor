@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.4 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qtypes.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -47,10 +47,10 @@ typedef uint32_t guint32;
  * relative moves from any square to any other
  */
 typedef gint8 qDirection;
-#define  LEFT  -1
-#define  RIGHT  1
-#define  DOWN  -9
-#define  UP     9
+#define  LEFT  (qDirection(-1))
+#define  RIGHT (qDirection(1))
+#define  DOWN  (qDirection(-9))
+#define  UP    (qDirection(9))
 
 #undef  FALSE
 #define FALSE 0
@@ -63,7 +63,8 @@ typedef gint8 qDirection;
 class qSquare {
  public:
   guint8 squareNum;
-  const static maxSquareNum = 80;
+  const static guint8 maxSquareNum = 80;
+  const static guint8 undefSquareNum = 81;
 
   // SQUARE_VAL macro included to assist defining qInitialPosition in qpos.cpp
 #define SQUARE_VAL(x,y) ((x)+9*(y))
@@ -72,6 +73,10 @@ class qSquare {
       assert((x<=8) && (y<=8));
       squareNum = SQUARE_VAL(x,y);
     }
+
+  qSquare() {
+      squareNum = qSquare::undefSquareNum;
+  }
 
   qSquare(guint8 squareId)
     {
@@ -82,11 +87,11 @@ class qSquare {
   // No need for destructor???
 
   // OPERATORS:
-  guint8 x() { return squareNum%9; }
-  guint8 y() { return squareNum/9; }
+  guint8 x() const { return squareNum%9; }
+  guint8 y() const { return squareNum/9; }
 
   /* Rather than do this, we'll make the squareNum public & modifiable.
-  guint8 const getSquareId()
+  guint8 getSquareId() const
     {
       assert(squareNum <= 80);
       return(squareNum);
@@ -110,18 +115,17 @@ class qPlayer {
   enum { WhitePlayer=0, BlackPlayer=1, NoPlayer=-1, OtherNoPlayer=2 };
 
   // Construct with qPlayer::WhitePlayer or qPlayer::BlackPlayer
-  qPlayer(gint8 playerId = NoPlayer);
+  qPlayer(gint8 id = NoPlayer) { playerId = id; };
 
-  // Factory method
-  qPlayer    otherPlayer()  { return qPlayer(1-playerId); }
+  qPlayer    otherPlayer() const { return qPlayer(1-playerId); };
 
   // Change the current instance
   void    changePlayer()  { playerId = 1-playerId; }
 
-  bool isWhite()          { return(playerId == WhitePlayer); } 
-  bool isBlack()          { return(playerId == BlackPlayer); }
-  gint8 getPlayerId()     { return playerId;  }
-  gint8 getOtherPlayerId(){ return 1-playerId; }
+  bool isWhite()      const { return(playerId == WhitePlayer); } 
+  bool isBlack()      const { return(playerId == BlackPlayer); }
+  gint8 getPlayerId() const { return playerId;  }
+  gint8 getOtherPlayerId() const { return 1-playerId; }
 };
 
 
@@ -163,22 +167,43 @@ class qMove {
   qMove() { move = 0; }
 
   // Members for accessing wall moves
-  inline bool isWallMove()      { return   move&0x01;      };
-  inline bool   wallMoveIsRow() { return   move&0x02;      };
-  inline bool   wallMoveIsCol() { return !(move&0x02);     };
-  inline guint8 wallRowOrColNo(){ return   (move&0x1f)>>2; };
-  inline guint8 wallPosition()  { return   move>>5;;       };
+  inline bool isWallMove()      const { return   move&0x01;      };
+  inline bool   wallMoveIsRow() const { return   move&0x02;      };
+  inline bool   wallMoveIsCol() const { return !(move&0x02);     };
+  inline guint8 wallRowOrColNo()const { return   (move&0x1f)>>2; };
+  inline guint8 wallPosition()  const { return   move>>5;;       };
 
   // Members for accessing pawn moves
-  inline bool     isPawnMove()          { return !(move&0x01);             };
-  inline qDirection pawnMoveDirection() { return  (((qDirection)move)>>1); };
+  inline bool     isPawnMove()  const { return !(move&0x01);             };
+  inline qDirection pawnMoveDirection()
+                                const { return  (((qDirection)move)>>1); };
 
   // Gets the binary representation of a move (in one byte)
-  inline guint8 getEncoding(void) { return move; };
+  inline guint8 getEncoding(void) const { return move; };
 
   // False for moves that were constructed but not initialized, else true
-  bool   exists(void) { return move; };
+  bool   exists(void) const { return move; };
 };
+
+// Here's basically an enumeration of all possible pawn moves
+// Should these be statics???
+static const qMove moveUp    = qMove(UP);
+static const qMove moveDown  = qMove(DOWN);
+static const qMove moveLeft  = qMove(LEFT);
+static const qMove moveRight = qMove(RIGHT);
+
+static const qMove moveUpUp       = qMove((qDirection)(UP+UP));
+static const qMove moveDownDown   = qMove((qDirection)(DOWN+DOWN));
+static const qMove moveLeftLeft   = qMove((qDirection)(LEFT+LEFT));
+static const qMove moveRightRight = qMove((qDirection)(RIGHT+RIGHT));
+
+static const qMove moveUL = qMove((qDirection)(UP+LEFT));
+static const qMove moveUR = qMove((qDirection)(UP+RIGHT));
+static const qMove moveDL = qMove((qDirection)(DOWN+LEFT));
+static const qMove moveDR = qMove((qDirection)(DOWN+RIGHT));
+
+static const qMove moveNull = qMove((guint8)0);
+
 
 /* Notes:
  * For hashed positions, we should generally give preference to keeping

@@ -5,16 +5,15 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: getmoves.h,v 1.2 2006/06/24 00:24:05 bmiller Exp $
+// $Id: getmoves.h,v 1.3 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_getmoves_h
-#define INCLUDE_getmoves_h
+#define INCLUDE_getmoves_h 1
 
 #include "qtypes.h"
+#include "qposition.h"
+#include "qmovstack.h"
 #include <deque>
-
-typedef deque<qMove> qMoveList; 
-typedef deque<qMove>::iterator qMoveListIterator;
 
 // Populates list of all legally playable moves in a given position,
 // inserting moves at the end of the list.
@@ -30,7 +29,7 @@ qMoveList *getPlayableMoves(qPosition   *pos,
 // Inserts new moves at end of returnList.
 // Returns returnList on success, NULL on failure
 qMoveList *getPossiblePawnMoves
-(qPosition pos,
+(qPosition *pos,
  qPlayer player2move,
  qMoveList *returnList);
 
@@ -43,20 +42,5 @@ qMoveList *getPossiblePawnMoves
 // hardquor might be useful here.
 bool pruneUselessMoves(qPosition  *pos,
 		       qMoveList  *moveList);
-
-static const qMove moveUp    = qMove(UP);
-static const qMove moveDown  = qMove(DOWN);
-static const qMove moveLeft  = qMove(LEFT);
-static const qMove moveRight = qMove(RIGHT);
-
-static const qMove moveUpUp       = qMove(UP+UP);
-static const qMove moveDownDown   = qMove(DOWN+DOWN);
-static const qMove moveLeftLeft   = qMove(LEFT+LEFT);
-static const qMove moveRightRight = qMove(RIGHT+RIGHT);
-
-static const qMove moveUL = qMove(UP+LEFT);
-static const qMove moveUR = qMove(UP+RIGHT);
-static const qMove moveDL = qMove(DOWN+LEFT);
-static const qMove moveDR = qMove(DOWN+RIGHT);
 
 #endif // INCLUDE_getmoves_h

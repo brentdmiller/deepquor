@@ -10,35 +10,43 @@
 #include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.4 2006/06/24 00:24:05 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.5 2006/07/09 06:37:38 bmiller Exp $");
 
 
 /*********************** 
  * class qGrowHash     *
  ***********************/
 
+template <class keyType, class valType>
+const guint16 qGrowHash<keyType, valType>::NumBuckets = POSITION_HASH_BUCKETS;
+
 // default hash func
-template <class keyType> static guint16
-qGrowHash::defaultqGrowHashFunc
-(keyType *key)
+template <class keyType, class valType>
+guint16 qGrowHash<keyType, valType>::defaultqGrowHashFunc
+(const keyType *key)
 {
   /* Adapted this from http://www.azillionmonkeys.com/qed/hash.html */
   // This code is for 32-bit, and I've simplified it by just lopping off
   // 2 bytes before returning!!!
 
-#include "pstdint.h" /* Replace with <stdint.h> if appropriate */
+  // #include "pstdint.h" << original header, available at above URL
+#include <stdint.h>
+#ifndef UINT32_C  /* No idea why this isn't getting defined by stdint.h -bdm */
+#define UINT32_C(c)  ((uint32_t)(c))
+#endif
+
 #undef get16bits
-#if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \
+#if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__)	\
   || defined(_MSC_VER) || defined (__BORLANDC__) || defined (__TURBOC__)
 #define get16bits(d) (*((const uint16_t *) (d)))
 #endif
 
 #if !defined (get16bits)
-#define get16bits(d) ((((const uint8_t *)(d))[1] << UINT32_C(8))\
+#define get16bits(d) ((((const uint8_t *)(d))[1] << UINT32_C(8))	\
                       +((const uint8_t *)(d))[0])
 #endif
 
-  const char * data = &(const char*)(key);
+  const char * data = (const char*)(&key);
   int len = sizeof(key);
   uint32_t hash = len, tmp;
   int rem;
@@ -80,107 +88,114 @@ qGrowHash::defaultqGrowHashFunc
   hash += hash >> 15;
   hash ^= hash << 10;
 
-  return hash;
+  return hash % POSITION_HASH_BUCKETS;  // Use a cast to throw away extra bits???
 }
 
-
-qGrowHash::qGrowHash
-()
-{
-  qGrowHash(NULL, NULL);
-}
-qGrowHash::qGrowHash
+template <class keyType, class valType>
+qGrowHash<keyType, valType>::qGrowHash
 (qGrowHash_hashFunc h,
- qGrowHash_initFunc i)
+ qGrowHash_eltInitFunc i)
 {
-  hashBuffer = new list<qGrowHashElt>[POSITION_HASH_BUCKETS];
+  hashBuffer = new qGrowHashEltList[POSITION_HASH_BUCKETS];
   numElts = 0;
   hashCbFunc = h ? h : &qGrowHash::defaultqGrowHashFunc;
   initCbFunc = i;
 }
 
-qGrowHash::~qGrowHash
+template <class keyType, class valType>
+qGrowHash<keyType, valType>::~qGrowHash
 ()
 {  delete [] hashBuffer; }
 
-template <class keyType, class valType> valType *qGrowHash::getElt
-(const keyType *pos)
+template <class keyType, class valType>
+valType *qGrowHash<keyType, valType>::getElt
+(const keyType *pos) const
 {
-  guint16 hashBucket = hashFunc(pos);
+  guint16 hashBucket = hashCbFunc(pos);
 
   // Find the elt in the bucket
-  list<qGrowHashElt*>::const_iterator iter;
+  qGrowHashEltList::const_iterator iter;
   for (iter = hashBuffer[hashBucket].begin();
-       iter != hashBuffer[hashBucket].end;
+       iter != hashBuffer[hashBucket].end();
        iter++) {
-    if ((*iter)->pos == *pos)
-      return *iter;
+    if ((unhackGrowHashEltType(*iter)->pos) == *pos)
+      return &(unhackGrowHashEltType(*iter)->posInfo);
   }
   return NULL;
 }
-
-template <class keyType, class valType> valType *qGrowHash::addElt
+ 
+template <class keyType, class valType>
+valType *qGrowHash<keyType, valType>::addElt
 (const keyType *pos)
 {
   qGrowHashElt *newElt = posHeap.eltAlloc();
   if (!newElt)
-    return False;
+    return FALSE;
 
   // clear newElt->evaluation[2] & newElt->flagPosException
   newElt->pos = *pos;
   if (initCbFunc)
     initCbFunc(&newElt->posInfo, &newElt->pos);
 
-  hashBuffer[pos.hashFunc()].push_front(newElt);
+  hashBuffer[this->hashCbFunc(pos)].push_front(hackifyGrowHashEltType(newElt));
   numElts++;
 
-  return newElt->posInfo;
+  return &(newElt->posInfo);
 }
 
-qGrowHashElt *qGrowHash::rmElt
-(qPosition *pos)
+template <class keyType, class valType>
+bool qGrowHash<keyType, valType>::rmElt
+(const keyType *pos)
 {
-  guint16 hashBucket = pos.hashFunc();
+  guint16 hashBucket = this->hashCbFunc(pos);
 
   // Find the elt in the bucket
-  list<qGrowHashElt*>::const_iterator iter;
+  qGrowHashEltList::iterator iter;
   for (iter = hashBuffer[hashBucket].begin();
-       iter != hashBuffer[hashBucket].end;
+       iter != hashBuffer[hashBucket].end();
        iter++) {
-    if ((*iter)->pos == *pos) {
+    if (unhackGrowHashEltType(*iter)->pos == *pos) {
       (void)hashBuffer[hashBucket].erase(iter);
-      posHeap.eltFree(*iter);
+      posHeap.eltFree(unhackGrowHashEltType(*iter));
       numElts--;
-      return True;
+      return TRUE;
     }
   }
-  return False;
+  return FALSE;
 }
 
 
 /******************************
  * class qGrowHashEltHeap     *
  ******************************/
-qGrowHashEltHeap::qGrowHashEltHeap
+template <class keyType, class valType>
+qGrowHash<keyType, valType>::qGrowHashEltHeap::qGrowHashEltHeap
 ()
 {
-  currBlock = new qGrowHashElt[HEAP_INITIAL_BLOCK_SIZE];;
-  if (currBlock)
+  /* Avoid constructors & destructors on individual elts */
+  // currBlock = new qGrowHashElt[HEAP_INITIAL_BLOCK_SIZE];
+  currBlock = (qGrowHashElt*)calloc(HEAP_INITIAL_BLOCK_SIZE, sizeof(qGrowHashElt));
+  if (currBlock) {
+    blocks2free.push_front(currBlock);
     currBlockAvailElts = HEAP_INITIAL_BLOCK_SIZE;
-  else
+  } else
     currBlockAvailElts = 0;
 }
 
-qGrowHashEltHeap::~qGrowHashEltHeap
+template <class keyType, class valType>
+qGrowHash<keyType, valType>::qGrowHashEltHeap::~qGrowHashEltHeap
 ()
 {
-  while (!blocks2free->empty()) {
-    delete [] (blocks2free->front());
-    blocks2free->pop_front();
+  while (!blocks2free.empty()) {
+    //delete [] (blocks2free.front());
+    free(blocks2free.front());
+    blocks2free.pop_front();
   }
 }
 
-qGrowHashElt *qGrowHashEltHeap::eltAlloc
+#if 0
+template <class keyType, class valType>
+qGrowHash<keyType, valType>::qGrowHashElt qGrowHash<keyType, valType>::qGrowHashEltHeap::eltAlloc
 ()
 {
   if (currBlockAvailElts > 0) {
@@ -190,18 +205,24 @@ qGrowHashElt *qGrowHashEltHeap::eltAlloc
     freeEltList.pop_back();
     return rval;
   } else {
-    blocks2free.push_front(currBlock);
-    currBlock = new qGrowHashElt[HEAP_BLOCK_SIZE];
-    if (currBlock)
+    // currBlock = new qGrowHashElt[HEAP_BLOCK_SIZE]; Avoid constructors
+    currBlock = (qGrowHashElt*)calloc(HEAP_BLOCK_SIZE, sizeof(qGrowHashElt));
+    if (currBlock) {
+      blocks2free.push_front(currBlock);
       currBlockAvailElts = HEAP_BLOCK_SIZE - 1; // subt. 1 cuz we're rtrning 1
-    else
+    } else
       currBlockAvailElts = 0;
     return &currBlock[currBlockAvailElts];
   }
 }
+#endif
 
-void qGrowHashEltHeap::eltFree
+template <class keyType, class valType>
+void qGrowHash<keyType, valType>::qGrowHashEltHeap::eltFree
 (qGrowHashElt* pos)
 {
   freeEltList.push_back(pos);
 }
+
+// Compile qGrowHash object for (qPosition,qPositionInfo) types
+template class qGrowHash<qPosition, qPositionInfo>;

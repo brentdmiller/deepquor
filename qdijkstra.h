@@ -5,21 +5,21 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qdijkstra.h,v 1.1 2006/06/24 00:24:05 bmiller Exp $
+// $Id: qdijkstra.h,v 1.2 2006/07/09 06:37:38 bmiller Exp $
 
 #ifndef INCLUDE_qdijkstra_h
-#define INCLUDE_qdijkstra_h
+#define INCLUDE_qdijkstra_h 1
 
 #include "qtypes.h"
 #include "qposition.h"
 
 typedef struct _qDijkstra {
-  qPosition *pos;   // in: Position to examine
-  qPlayer player;   // in: which player's pawn to check
-  bool getAllRoutes;// in: TRUE  == find every accessible finish
-                    //     FALSE == stop after finding fastest route 
+  const qPosition *pos; // in: Position to examine
+  qPlayer player;       // in: which player's pawn to check
+  bool getAllRoutes;    // in: TRUE  == find every accessible finish
+                        //     FALSE == stop after finding fastest route 
 
-  gint8[10] dist; // out: number of moves required to reach finish square(s)
+  gint8 dist[10];  // out: number of moves required to reach finish square(s)
                    // dist[0] is # moves to reach fastest possible finish
                    // dist[1] is # moves to reach next closest finish, etc.
                    // dist[N] == -1 indicates no more accessible finishes.
@@ -27,7 +27,7 @@ typedef struct _qDijkstra {
   /* Maybe allow the following
    * bool          useCachedGraph;
    * qCalcGraphRec graph;
-   * #define qDarg_CLEAR_CACHE(d) ((d).useCachedGraph=False) (1)
+   * #define qDarg_CLEAR_CACHE(d) ((d).useCachedGraph=FALSE) (1)
    */
 #define qDarg_CLEAR_CACHE(d) 1
 } qDijkstraArg;
@@ -38,6 +38,6 @@ typedef struct _qDijkstra {
  * check whether the vertex has been seen for every edge that exists, our
  * time will be more like O(mV + nE)
  */ 
-QDecl(int, qDijkstra, (qDijkstraArg*));
+int qDijkstra (qDijkstraArg *arg);
 
 #endif // INCLUDE_qpdijkstra_h

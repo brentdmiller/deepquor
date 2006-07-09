@@ -10,7 +10,7 @@
 #include "qposition.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposition.cpp,v 1.3 2005/11/15 18:57:02 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.4 2006/07/09 06:37:38 bmiller Exp $");
 
 
 // Is this how to have a global that is initialized by the compiler???
@@ -49,6 +49,44 @@ void qPosition::applyMove
     }
 }
 
+bool qPosition::canPutWall
+(bool rowOrCol,
+guint8 RCNum,
+guint8 pos) const
+{
+  // Is there a wall already in place here?
+  guint8 mask;
+  if (pos == 0)
+    mask = 3;  // 11000000
+  else
+    { // pos > 0
+      if (pos <= 6)
+        mask = 7<<(pos-1); // 11100000, 01110000, 00111000, etc.
+      else
+        {  // pos >= 7
+          if (pos > 7)
+            { g_assert(pos <= 7); return FALSE; }
+          mask = 192; // 00000011
+        }
+    }
+  if (rowOrCol == ROW) {
+    if (row_walls[RCNum] & mask)
+      return FALSE;
+
+    // Is there a wall across our path?
+    if (col_walls[pos] & (1<<RCNum))
+      return FALSE;
+  } else {
+    if (col_walls[RCNum] & mask)
+      return FALSE;
+
+    // Is there a wall across our path?
+    if (row_walls[pos] & (1<<RCNum))
+      return FALSE;
+  }
+  return TRUE;
+}
+
 // There is no theoretical basis for this hashFunc...the idea was to make
 // something fast that had a good chance of working sort of well.
 // I tried to mix up the bits, shifting the various rows & cols of wall
@@ -57,7 +95,7 @@ void qPosition::applyMove
 // We should probably do some testing to detect if there are lots of
 // collisions!!!
 guint16 qPosition::hashFunc
-(void)
+(void) const
 {
   guint32 mixer;
 

@@ -5,11 +5,11 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: parameters.h,v 1.3 2006/06/24 00:24:05 bmiller Exp $
+// $Id: parameters.h,v 1.4 2006/07/09 06:37:38 bmiller Exp $
 
 
 #ifndef INCLUDE_parameters_h
-#define INCLUDE_parameters_h
+#define INCLUDE_parameters_h 1
 
 /* Many adjustable parameters are defined here rather than in their
  * component code, for convenience in tweaking parameters.
@@ -102,21 +102,12 @@
  */
 // #define HAVE_NUM_COMPUTATIONS
 
+template<typename T> inline T square(const T& x) { return x*x; }
+
+
 /* Define the following if we want to attempt leveraging the "spread" in
  * required moves to reach varios finish squares in evaluating pos scores.
  */
 // #define USE_FINISH_SPREAD_SCORE 1
-inline guint16 scoreSpread(gint8 *sortedFinishDistances)
-{
-  g_assert(sortedFinishDistances && *sortedFinishDistances);
-  guint16 spread = 0;
-  gint8 prevdist = *sortedFinishDistances;
-  ++sortedFinishDistances;
-  while (*sortedFinishDistances) {
-    spread += square(*sortedFinishDistances - dist);
-    prevdist = *(sortedFinishDistances++);
-  }
-  return spread;
-}
 
 #endif // INCLUDE_parameters_h
