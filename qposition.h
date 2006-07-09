@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qposition.h,v 1.6 2006/07/09 17:26:14 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -42,7 +42,7 @@ class qPosition {
 
       g_assert(white_walls_left <= 15);
       g_assert(black_walls_left <= 15);
-      numwalls = black_walls_left<<4 + white_walls_left;
+      numwalls = (black_walls_left<<4) + white_walls_left;
     };
 
   inline bool isWon(qPlayer p) const
@@ -56,7 +56,7 @@ class qPosition {
   // qPosition(qPosition copy) :
   //  white_pawn_pos(copy.white_pawn_pos), black_pawn_pos(black_pawn_pos);
 
-  inline guint8 numWhiteWallsLeft() const { return (numwalls & 0x15); };
+  inline guint8 numWhiteWallsLeft() const { return (numwalls & 0x0f); };
   inline guint8 numBlackWallsLeft() const { return (numwalls >> 4); };
   inline guint8 numWallsLeft(qPlayer p) const
     { return p.isWhite() ? numWhiteWallsLeft() : numBlackWallsLeft(); };
@@ -134,5 +134,10 @@ class qPosition {
 
 /* Position at the beginning of the game */
 extern const qPosition qInitialPosition;
+
+/* Probably not useful to anyone... */
+extern const qSquare initialWhitePawnLocation;
+extern const qSquare initialBlackPawnLocation;
+
 
 #endif // INCLUDE_qposition_h
