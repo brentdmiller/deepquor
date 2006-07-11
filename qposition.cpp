@@ -10,7 +10,7 @@
 #include "qposition.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposition.cpp,v 1.4 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.5 2006/07/11 23:26:27 bmiller Exp $");
 
 
 // Is this how to have a global that is initialized by the compiler???
@@ -33,10 +33,23 @@ void qPosition::applyMove
 {
   if (move.isWallMove())
     {
+      if (player.isWhite()) {
+	int n = numWhiteWallsLeft();
+	if (n == 0)
+	  return;
+	setWhiteWallsLeft(n-1);
+      } else {
+	g_assert(p.isBlack());
+	int n = numBlackWallsLeft();
+	if (n == 0)
+	  return;
+	setBlackWallsLeft(n-1);
+      }
       if (move.wallMoveIsRow())
 	row_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition());
       else
 	col_walls[move.wallRowOrColNo()] |= 1<<(move.wallPosition());
+
       return;
     }
   else // isPawnMove

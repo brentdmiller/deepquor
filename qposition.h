@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.6 2006/07/09 17:26:14 bmiller Exp $
+// $Id: qposition.h,v 1.7 2006/07/11 23:26:27 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -60,6 +60,13 @@ class qPosition {
   inline guint8 numBlackWallsLeft() const { return (numwalls >> 4); };
   inline guint8 numWallsLeft(qPlayer p) const
     { return p.isWhite() ? numWhiteWallsLeft() : numBlackWallsLeft(); };
+  inline void setWhiteWallsLeft(guint8 n)
+    { g_assert(n < 0x0f); numwalls &= 0xf0; numwalls |= n; };
+  inline void setBlackWallsLeft(guint8 n)
+    { g_assert(n < 0x0f); numwalls &= 0x0f; numwalls |= n<<4; };
+  inline void setNumWallsLeft(qPlayer p, guint8 n)
+    { if (p.isWhite()) setWhiteWallsLeft(n); else setBlackWallsLeft(n); };
+
   inline bool  isBlockedByWall(qSquare fromSq, qDirection dir) const
     { return isBlockedByWall(fromSq.x(), fromSq.y(), dir); };
   inline bool  isBlockedByWall(guint8 x, guint8 y, qDirection dir) const
