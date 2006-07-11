@@ -85,5 +85,10 @@ int main
         whoseMove.changePlayer();
 	dumpSituation(movStack);
 
+	printf("\nAFTER DROPPING A WALL\n");
+	movStack->pushEval(NULL, posHash, whoseMove, qMove(ROW, 0, 3), NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
 	return 0;
 }
