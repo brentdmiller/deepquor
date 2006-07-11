@@ -8,7 +8,7 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.7 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.8 2006/07/11 06:02:54 bmiller Exp $");
 
 
 /***********************
@@ -89,7 +89,10 @@ void qMoveStack::initWallMoveTable()
     }
 }
 
-void qMoveStack::pushMove(qPlayer playerMoving, qMove mv, qPosition *endPos)
+void qMoveStack::pushMove
+(qPlayer        playerMoving,
+ qMove          mv,
+ qPosition     *endPos)
 {
 #define ARRAYSIZE(ARR) (sizeof(ARR)/sizeof((ARR)[0]))
 
@@ -205,16 +208,26 @@ qWallMoveInfo *qWallMoveInfoList::pop
   return rval;
 };
 
+bool qMoveStack::getPossibleWallMoves(qMoveList *moveList) const
+{
+  if (!moveList)
+    return FALSE;
 
-// Helper funcs for flagging positions in the thought sequence
-//
+  qWallMoveInfo *c = possibleWallMoves.getHead();
 
-/*********************
- * Private utilities *
- *********************/
+  while (c) {
+    g_assert(c->possible == TRUE);
+    moveList->push_back(c->move);
+    c = c->next;
+  }
+  return TRUE;
+}
 
+
+// Funcs that flag positions in the thought sequence (i.e. for evaluating
+// moves temporarily rather than actually making them.
 // These funcs use the positionHash to flag which moves are under evaluation
-// These funcs flag which moves are under evaluation
+//
 inline static void setMoveInEval
 (qPositionInfo *posInfo, qPlayer playerToMove)
 {
@@ -233,87 +246,82 @@ inline static void clearMoveInEval
     posInfo->clearPositionFlagBits(qPositionInfo::flag_BlackToMove);
 }
 
-// This is a fast check--since revisiting positions is rare, it should
-// be used before checking for which playerToMove is in the stack
-inline static bool isInMoveStack
-(qPositionInfo *posInfo)
-{ return (posInfo->isPosExceptional() && (posInfo->getPositionFlag() > 0));};
 
-
-/***********************
- * Public helper funcs *
- ***********************/
-
-// These funcs set the positionHash in the qPosHash to track which moves are
-// currently under evaluation.
-qPositionInfo *pushMove(qMoveStack        *movStack,
-			qPositionInfo     *start_posInfo, // optimizer
-			qPositionInfoHash *posHash,  // reqd if posInfo==NULL
-			qPlayer            whoMoved, //   From here down same
-			qMove              move,     //   as qMoveStack
-			qPosition         *endPos)
+qPositionInfo *qMoveStack::pushEval
+(qPositionInfo     *endPosInfo, // optimizer
+ qPositionInfoHash *posHash,  // reqd if posInfo==NULL
+ qPlayer            whoMoved, //   From here down same
+ qMove              move,     //   as pushMove()
+ qPosition         *endPos)
 {
-  g_assert(movStack);
-  g_assert(start_posInfo || posHash);
-  if (!start_posInfo && !posHash)
+  g_assert(endPosInfo || posHash);
+  if (!endPosInfo && !posHash)
     return NULL;
 
-  // 1. Mark position as under evaluation in posInfo w/setMoveInEval()
-  if (!start_posInfo)
-    start_posInfo = posHash->getOrAddElt(movStack->getPos());
-  setMoveInEval(start_posInfo, whoMoved);
-  g_assert(whoMoved.playerId() == movStack->getPlayer2Move().playerId);
+  g_assert(whoMoved.playerId() == this->getPlayer2Move().playerId);
 
-  // 2. call movStack->pushMove(mv)
-  movStack->pushMove(whoMoved, move, endPos);
-  return start_posInfo;
+  // 1. Mark position as under evaluation in posInfo w/setMoveInEval()
+  if (!this->moveStack[sp].posInfo)
+    this->moveStack[sp].posInfo = posHash->getOrAddElt(this->getPos());
+  g_assert(this->moveStack[sp].posInfo);
+  setMoveInEval(this->moveStack[sp].posInfo, this->moveStack[sp].playerMoved);
+
+  // 2. Push move onto stack with posInfo
+  if (!endPosInfo) {
+    if (!endPos) {
+      g_assert(this->getPos());
+      qPosition myPos = *this->getPos();
+      myPos.applyMove(whoMoved, move);
+      endPosInfo = posHash->getOrAddElt(&myPos);
+
+      this->pushMove(whoMoved, move, &myPos);
+      return endPosInfo;
+    }
+    endPosInfo = posHash->getOrAddElt(endPos);
+  }
+
+  this->pushMove(whoMoved, move, endPos);
+  return endPosInfo;
 }
 
-void popMove(qMoveStack *movStack)
+void qMoveStack::popEval(void)
 {
   // 1. Pop off to previous moveStack frame
-  movStack->popMove();
+  this->popMove();
+
+  // Can't pop a move that's not in eval
+  g_assert(this->getPosInfo());
 
   // 2. Mark the position we were examining as no longer under evaluation
-  clearMoveInEval(movStack->getPosInfo(), movStack->getPlayer2Move());
+  clearMoveInEval(this->getPosInfo(), this->getPlayer2Move());
 }
 
-/* These "private" versions of funcs don't need the movStack arg in our
- * current implementation.  Future implementations, though, will probably
- * require the movStack arg.  We've used inline functions in qmovstack.h
- * to discard the first arg and call a private_* version of these funcs
- * with one fewer arg.  When these funcs are changed to use a movStack
- * arg then we can remove "private_" from their names and get rid of the
- * inline versions in the header???
- */
-bool private_isInMoveStack
-(qPositionInfo *posInfo, qPlayer p)
-{ return (isInMoveStack(posInfo) &&
-	  (p.isWhite() ? isWhiteMoveInStack(NULL, posInfo) :
-	   isBlackMoveInStack(NULL, posInfo)));};
-
-bool private_isWhiteMoveInStack
+// This is a fast check--since revisiting positions is rare, it should
+// be used before checking for which playerToMove is in the stack
+inline static bool private_isInEvalStack
 (qPositionInfo *posInfo)
-{ return (isInMoveStack(posInfo) &&
-          (posInfo->getPositionFlag() & flag_WhiteToMove));};
-
-bool private_isBlackMoveInStack
-(qPositionInfo *posInfo)
-{ return (isInMoveStack(posInfo) &&
-	  (posInfo->getPositionFlag() & flag_BlackToMove));};
-
-
-bool qMoveStack::getPossibleWallMoves(qMoveList *moveList) const
 {
-  if (!moveList)
-    return FALSE;
+  return (posInfo->isPosExceptional() && (posInfo->getPositionFlag() > 0));
+}
 
-  qWallMoveInfo *c = possibleWallMoves.getHead();
 
-  while (c) {
-    g_assert(c->possible == TRUE);
-    moveList->push_back(c->move);
-    c = c->next;
-  }
-  return TRUE;
+bool qMoveStack::isInEvalStack
+(qPositionInfo *posInfo, qPlayer p) const
+{
+  return (p.isWhite() ?
+	  isWhiteMoveInEvalStack(posInfo) : isBlackMoveInEvalStack(posInfo));
+}
+
+bool qMoveStack::isWhiteMoveInEvalStack
+(qPositionInfo *posInfo) const
+{
+  return (private_isInEvalStack(posInfo) &&
+          (posInfo->getPositionFlag() & qPositionInfo::flag_WhiteToMove));
+}
+
+bool qMoveStack::isBlackMoveInEvalStack
+(qPositionInfo *posInfo) const
+{
+  return (private_isInEvalStack(posInfo) &&
+	  (posInfo->getPositionFlag() & qPositionInfo::flag_BlackToMove));
 }

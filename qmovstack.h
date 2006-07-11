@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.7 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qmovstack.h,v 1.8 2006/07/11 06:02:54 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
@@ -13,7 +13,6 @@
 
 #include "qtypes.h"
 #include "qposition.h"
-#include "qposinfo.h"
 #include "qposhash.h"
 #include "parameters.h"
 #include <deque>
@@ -104,7 +103,7 @@ typedef struct _qMoveStackFrame {
   qWallMoveInfoList wallMovesBlockedByMove;
 
   // !!! See comment in class qMoveStack:
-  qPositionInfo    *posInfo;    // Remember this to avoid extra lookups
+  qPositionInfo    *posInfo; // Store qPositionInfo to avoid extra lookups
 } qMoveStackFrame;
 
 class qMoveStack {
@@ -129,7 +128,7 @@ class qMoveStack {
 
   void  pushMove(qPlayer        whoMoved,
 		 qMove          move,
-		 qPosition     *endPos=NULL); // Optional optimizer
+		 qPosition     *endPos =NULL); // Optional optimizer
   void  popMove(void);
   qMove peekLastMove(void) const   {return moveStack[sp].move;};
 
@@ -143,17 +142,56 @@ class qMoveStack {
   // perform hash lookups again on the way back down the stack.
   // We can assume no posInfo records that were in the stack got harvested
   // to free memory because anything under evaluation cannot be cleaned
-  // or we'll lose track of any possible cycles in our thought.
-  qPositionInfo *getPosInfo(void) const { return moveStack[sp].posInfo; }
-  void           setPosInfo(qPositionInfo *p) { moveStack[sp].posInfo = p; }
+  // (or we'd lose track of any possible cycles in our thought).
+  qPositionInfo *getPosInfo(void) const       {return moveStack[sp].posInfo;};
+  void           setPosInfo(qPositionInfo *p) {moveStack[sp].posInfo = p;};
 
   // Get list of possible wall moves from current location, appending them to
   // the back of the passed-in list.  Return true on success, false otherwise.
   bool getPossibleWallMoves(qMoveList *moveList) const;
 
+  /***************************************************
+   * Members for handling moves under evaluation     *
+   ***************************************************/
+
+  /* Note: because we want to use the "possible wall move" optimization,
+   * we need to record all moves in our stack--we can't keep actual moves
+   * in one stack and "contemplating" moves in another.
+   * Thus, there is no point in creating a derived class of qMoveStack
+   * that flags which moves are under consideration and allows querying
+   * if a given move is in the thought sequence.  Rather, all parts of
+   * the AI player will share one stack, and will use the following distinct
+   * funcs for pushing/popping moves under consideration, flagging them as
+   * in the thought sequence.  Use the direct push() pop() member functions
+   * when making real moves.
+   */
+
+  // These functions mark positions under evaluation so we can check what
+  // is in the stack.
+  // They set the positionHash in the qPosHash to mark moves as
+  // "currently under evaluation."
+  // This uses bits 1 & 2 in the qPositionInfo qPositionFlag.
+  // MT NOTE:  depending on the posHash (& posInfo) for tagging which
+  // positions are in the stack is convenient, but prevents multiple
+  // qMoveStacks from operating on one posHash.  We should implement
+  // a data type as part of the qMoveStack for checking if moves are in
+  // the stack.  ???
+
+  qPositionInfo *pushEval(qPositionInfo     *endPosInfo, // optimizer
+			  qPositionInfoHash *posHash,  // reqd if posInfo==NULL
+			  qPlayer            whoMoved, //   From here down same
+			  qMove              move,     //   as pushMove
+			  qPosition         *endPos);
+
+  void  popEval();
+
+  // Returns if position is in the move stack with specified player to move
+  bool isInEvalStack (qPositionInfo *posInfo,
+		      qPlayer        player) const;
+  inline bool isWhiteMoveInEvalStack(qPositionInfo *posInfo) const;
+  inline bool isBlackMoveInEvalStack(qPositionInfo *posInfo) const;
 
  private:
-
   qMoveStackFrame moveStack[MOVESTACKSIZ];
   guint8          sp;
 
@@ -161,73 +199,5 @@ class qMoveStack {
   qWallMoveInfoList possibleWallMoves;
 };
 
-
-
-/***************************************************
- * Utility wrapper funcs                           *
- *                                                 *
- * These functions "wrap" the qMoveStack class and *
- * add useful functionality.                       *
- ***************************************************/
-
-/* Note: because we want to use the "possible wall move" optimization,
- * we need to record all moves in our stack--we can't keep actual moves
- * in one stack and "contemplating" moves in another.
- * Thus, there is no point in creating a derived class of qMoveStack
- * that flags which moves are under consideration and allows querying
- * if a given move is in the thought sequence.  Rather, all parts of
- * the AI player will share one stack, and will use wrapper funcs when
- * contemplating moves and flagging them as in the thought sequence, and
- * will directly push moves in the qMoveStack (without the wrapper funcs)
- * when making a real move.
- */
-
-enum { flag_WhiteToMove=0x01, flag_BlackToMove=0x02 };
-
-// These funcs set the positionHash in the qPosHash to track which moves are
-// currently under evaluation.
-// This uses bits 1 & 2 in the qPositionInfo qPositionFlag.
-// MT NOTE:  depending on the posHash (& posInfo) for tagging which
-// positions are in the stack is convenient, but prevents multiple
-// qMoveStacks from operating on one posHash.  We should implement
-// a data type as part of the qMoveStack for checking if moves are in
-// the stack.  ???
-qPositionInfo *pushMove(qMoveStack        *movStack,
-			qPositionInfo     *posInfo,  // optimizer
-			qPositionInfoHash *posHash,  // reqd if posInfo==NULL
-			qPlayer            whoMoved, //   From here down same
-			qMove              move,     //   as qMoveStack
-			qPosition         *pos);
-
-void  popMove(qMoveStack *movStack);
-
-// Returns if a given position is in the stack
-bool private_isInMoveStack(qPositionInfo *posInfo,
-			   qPlayer        player);
-inline bool isInMoveStack
-(qMoveStack    *movStack,
- qPositionInfo *posInfo,
- qPlayer        player)
-{
-  return private_isInMoveStack(posInfo, player);
-};
-
-// Returns if this position is in the move stack with white to move
-bool private_isWhiteMoveInStack(qPositionInfo *posInfo);
-inline bool isWhiteMoveInStack
-(qMoveStack *moveStack,
- qPositionInfo *posInfo)
-{
-  return private_isWhiteMoveInStack(posInfo);
-};
-
-// Returns if this position is in the move stack with black to move
-bool private_isBlackMoveInStack(qPositionInfo *posInfo);
-inline bool isBlackMoveInStack
-(qMoveStack *moveStack,
- qPositionInfo *posInfo)
-{
-  return private_isBlackMoveInStack(posInfo);
-};
 
 #endif // INCLUDE_movstack_h
