@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposinfo.h,v 1.4 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qposinfo.h,v 1.5 2006/07/11 06:04:51 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
 #define INCLUDE_posinfo_h 1
@@ -102,7 +102,7 @@ class qPositionInfo {
   */
 
   /* Flags for noting stuff about position.
-   * Values <= are reserved as follows:
+   * Values <= 0 are reserved as follows:
    * 0  - nothing of interest
    * <0 - position is not legal
    * Positive bitmask values can be set and cleared by subordinate packages
