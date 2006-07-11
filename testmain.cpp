@@ -31,22 +31,57 @@ int main
 	dumpSituation(movStack);
 
 	printf("\nAFTER MOVING UP\n");
-	pushMove(movStack, NULL, posHash, whoseMove, moveUp, NULL);
+	movStack->pushEval(NULL, posHash, whoseMove, moveUp, NULL);
         whoseMove.changePlayer();
 	dumpSituation(movStack);
 
 	printf("\nAFTER MOVING DOWN\n");
-	pushMove(movStack, NULL, posHash, whoseMove, moveDown, NULL);
+	movStack->pushEval(NULL, posHash, whoseMove, moveDown, NULL);
         whoseMove.changePlayer();
 	dumpSituation(movStack);
 
 	printf("\nAFTER MOVING RIGHT\n");
-	pushMove(movStack, NULL, posHash, whoseMove, moveRight, NULL);
+	movStack->pushEval(NULL, posHash, whoseMove, moveRight, NULL);
         whoseMove.changePlayer();
 	dumpSituation(movStack);
 
 	printf("\nAFTER MOVING LEFT\n");
-	pushMove(movStack, NULL, posHash, whoseMove, moveLeft, NULL);
+	movStack->pushEval(NULL, posHash, whoseMove, moveLeft, NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER DROPPING A WALL\n");
+	movStack->pushEval(NULL, posHash, whoseMove, qMove(ROW, 0, 3), NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER MOVING UP\n");
+	movStack->pushEval(NULL, posHash, whoseMove, moveUp, NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER MOVING UP\n");
+	movStack->pushEval(NULL, posHash, whoseMove, moveUp, NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER MOVING DOWN\n");
+	movStack->pushEval(NULL, posHash, whoseMove, moveDown, NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER MOVING DOWN\n");
+	movStack->pushEval(NULL, posHash, whoseMove, moveDown, NULL);
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER POPPING A MOVE FROM THE STACK\n");
+	movStack->popEval();
+        whoseMove.changePlayer();
+	dumpSituation(movStack);
+
+	printf("\nAFTER POPPING A MOVE FROM THE STACK\n");
+	movStack->popEval();
         whoseMove.changePlayer();
 	dumpSituation(movStack);
 
