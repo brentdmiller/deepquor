@@ -1,5 +1,5 @@
  ************************************************************
- * Copyright (c) 2005
+ * Copyright (c) 2005-2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE_DOCS file for terms.
@@ -12,6 +12,8 @@ There are several primitive types from qtype.h:
   qSquare - a square (where a pawn can land) on the quoridor board
   qDirection - a vector representing the relative movement between squares
   qMove   - a move (qDirection for pawn more or location of a dropped wall)
+In addition, qtype.cpp defines a few constants that are available for use
+  by other packages
 
 The larger data structures and interfaces are as follows:
   qPosition - qposition.[h,cpp]
@@ -37,11 +39,11 @@ The larger data structures and interfaces are as follows:
   * For each frame, allows push, pop & peek of (playerId, qMove, qPosition)
   * In addition to storing pushed & popped info, this class also provides
     O(1) access to the list of possible (unblocked by other walls) wall
-    placements moves from the current frame.
-  * Possible pawn moves are not provides, since this can be calculated
-    inexpensives from the qPosition.
-  * Can provide fast query ability (if enabled) to determine if given
-    positions occur in the move stack.  Flagging moves that are part of the
+    placement moves from the current frame.
+  * Possible pawn moves are not provided, since they can be calculated
+    inexpensively from the qPosition.
+  * Can provide fast query ability to determine if given positions occur in
+    the move stack.  Flagging moves that are part of the
     game history or part of the current move sequence under evaluation can
     prevent repeated moves or endless cycles during evaluation.
   qMoveStack functionality could probably be folded into the qComputationTree,
@@ -71,3 +73,106 @@ The larger data structures and interfaces are as follows:
     contendors for "best line" are understood.
 
 Perhaps search.cpp & eval.cpp should be combined into a moveSearcher object.
+
+TODO:
+1. Turn on USE_FINISH_SPREAD_SCORE in parameters.h  It should be used.
+
+
+
+DATA TYPES LISTED BY SOURCE FILE, AND THEIR DEPENDENCIES
+
+parameters.h:
+	square (the mathematical operation)
+
+qtypes.h:
+	g*int*
+	qDirection
+	RowOrCol	
+	qSquare	
+	qPlayer	
+	qMove
+
+qposition.h:
+	qPosition: (gint, qSquare, qDirection, qPlayer, qMove) = qtypes.h
+
+qposinfo.h:
+	qPositionEvaluation: (gint) = qtypes.h
+	qPositionFlag: (gint) = qtypes.h
+	qPositionInfo:
+		(qPlayer, gint) = qtypes.h
+		(qPositionEvaluation) = self
+
+qposhash.h:
+	qGrowHash: (gint) = qtypes.h
+	qPositionInfoHash:
+		(qPosition) = qposition.h
+		(qPositionInfo) = qposinfo.h
+
+qmovstack.h:
+	qWallMoveInfo (qMove, qWallMoveInfoList) = qtypes.h
+	qWallMoveInfoList (qWallMoveInfo) = self
+	qMoveList
+	qMoveStackFrame:
+		(qPosition) = qposition.h
+		(qMove, qPlayer) = qtypes.h
+		(qWallMoveInfoList) = self
+		(qPositionInfo) = qposinfo.h
+	qMoveStack:
+		(qPlayer, qMove) = qtypes.h
+		(qPosition) = qposition.h
+		(qPositionInfo) = qposinfo.h
+		(qMoveList) = self
+		(qMoveStackFrame, qWallMoveInfo, qWallMoveInfoList) = self
+	flag_WhiteToMove, flag_BlackToMove
+	pushMove(): (qPositionInfoHash) = qposhash.h
+
+getmoves.h
+	func getPlayableMoves:
+		(qMoveList, qMoveStack) = qmovstack.h
+		(qPosition) = qposition.h
+	func getPossiblePawnMoves:
+		(qMoveList) = qmovstack.h
+		(qPosition) = qposition.h
+		(qPlayer) = qtypes.h
+	func pruneUselessMoves:
+		(qMoveList) = qmovstack.h
+		(qPosition) = qposition.h
+
+qcomptree.h
+	qComputationTree:
+		(qMove, gint) = qtypes.h
+		(qPositionEvaluation, qPositionInfo) = qposinfo.h
+		
+
+qdijkstra.h
+	qDijkstraArg:
+		(qPosition) = qposition.h
+		(qPlayer, gint) = qtypes.h
+
+qsearcher.h
+	qSearcher:
+		(qPosition) = qposition.h
+		(qPlayer, qMove, gint) = qtypes.h
+		(qPositionInfoHash) = qposhash.h
+		(qMoveStack) = qmovstack.h
+		(qComputationTree) = qcomptree.h
+		(qPositionEvaluation) = qposinfo.h
+	func ratePositionByComputation:
+		(qPositionEvaluation) = qposinfo.h
+		(qPosition) = qposition.h
+		(qPlayer) = qtypes.h
+		(qPositionInfo) = qposinfo.h
+	qEvalIterator:
+		(qPositionEvaluation) = qposinfo.h
+	qEvalItorFromMvContainer:qEvalIterator:
+		(qPositionInfoHash) = qposhash.h
+		(qPlayer) = qtypes.h
+		(qPosition) = qposition.h
+		(qPositionEvaluation) = qposinfo.h
+	func ratePositionFromNeighbors:
+		(qPositionInfo) = qposinfo.h
+		(qPosition) = qposition.h
+		(qPlayer) = qtypes.h
+		(qEvalIterator) = self
+		
+		
