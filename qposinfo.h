@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposinfo.h,v 1.5 2006/07/11 06:04:51 bmiller Exp $
+// $Id: qposinfo.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
 #define INCLUDE_posinfo_h 1
@@ -21,7 +21,9 @@
 typedef struct _qPositionEvaluation {
   gint16 score;         // Rating of how good position is
   guint16 complexity;   // Score's uncertainty: 0=sure, +/- range of score
+#ifdef HAVE_NUM_COMPUTATIONS
   //! guint32 computations; // Number of direct calculations that contributed
+#endif
   //! guint8  demand;       // Rating of how significant this position is
 } qPositionEvaluation;
 
@@ -79,9 +81,14 @@ class qPositionInfo {
   bool          initEval(qPlayer p);    // Initialize eval to !exists for p
   bool          initEval();             // Initialize to !exists for both
 
-  inline qPositionEvaluation *get(qPlayer p) const;
+  // Note:  clients allowed to directly modify returned pointer contents
+  // (This should be a const member function, but gcc doesn't like a const
+  // member func returning a non-const pointer to member data.
+  qPositionEvaluation *get(qPlayer p)
+    { return &(this->evaluation[p.getPlayerId()]); };
 
-  void set(qPlayer p, qPositionEvaluation const *neweval);
+  void set(qPlayer p, const qPositionEvaluation *neweval)
+    { this->evaluation[p.getPlayerId()] = *neweval; };
 
   inline gint16       getScore(qPlayer p) const
     { return evaluation[p.getPlayerId()].score; };
@@ -95,11 +102,12 @@ class qPositionInfo {
   inline void         setComplexity(qPlayer p, guint8 val)
     { evaluation[p.getPlayerId()].complexity=val;};
 
-  /* inline guint8 getComputations(qPlayer p)
+#ifdef HAVE_NUM_COMPUTATIONS
+  inline guint8 getComputations(qPlayer p)
      { return evaluation[p.getPlayerId()].computations;};
-     inline void   setComputations(qPlayer p, guint32 val)
+  inline void   setComputations(qPlayer p, guint32 val)
      { evaluation[p.getPlayerId()].computations=val;};
-  */
+#endif
 
   /* Flags for noting stuff about position.
    * Values <= 0 are reserved as follows:
