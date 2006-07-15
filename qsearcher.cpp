@@ -7,10 +7,11 @@
 
 
 #include "qsearcher.h"
+#include "getmoves.h"
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.6 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.7 2006/07/15 05:16:38 bmiller Exp $");
 
 // Convenience utility
 guint32 milliseconds_since2000(void);
@@ -334,11 +335,11 @@ qSearcher::iSearch
 /* scanDeeper
  */  
 const qPositionEvaluation *qSearcher::scanDeeper
-(qPosition *pos,
- qPlayer    player2move,
- gint32     depth,
+(const qPosition *pos,
+ qPlayer          player2move,
+ gint32           depth,
  // qPositionEval *evalToBeat,
- guint32   &r_positionsEvaluated)
+ guint32         &r_positionsEvaluated)
 {
   qPositionInfo *posInfo;
   guint32        childPositionsComputed;
@@ -362,7 +363,7 @@ const qPositionEvaluation *qSearcher::scanDeeper
   else
     {
       // Check if this position is already in the move stack
-      if (isInMoveStack(&moveStack, posInfo, player2move))
+      if (moveStack.isInEvalStack(posInfo, player2move))
 	return positionEval_even;
     }
 
@@ -447,21 +448,17 @@ const qPositionEvaluation *qSearcher::scanDeeper
 	   move_idx++) {
 	qMove possible_move = computationTree.getNodePrecedingMove(next_position_id);
 
-	pushMove(&moveStack, posInfo, &posHash, player2move, possible_move, NULL);
+	moveStack.pushEval(posInfo, &posHash, player2move, possible_move, NULL);
 	currentTreeNode = next_position_id;
 	scanDeeper(moveStack.getPos(), otherPlayer, depth++, childPositionsComputed);
 	r_positionsEvaluated += childPositionsComputed;
 	depth -= childPositionsComputed;
 	currentTreeNode = computationTree.getNodeParent(currentTreeNode);
-	popMove(&moveStack);
+	moveStack.popEval();
       }
       {
 	qCompTreeChildEdgeEvalIterator itor(&computationTree, currentTreeNode);
-	ratePositionFromNeighbors(pos, player2move, posInfo,
-				  &itor);
-	/*posInfo = ratePositionFromNeighbors(pos, player2move, posInfo,
-	  p_eval, p_mvlist, p_evalList);
-	*/
+	ratePositionFromNeighbors(pos, player2move, posInfo, &itor);
       }
       return posInfo->get(player2move);
     }
@@ -505,7 +502,7 @@ const qPositionEvaluation *qSearcher::scanDeeper
 		++r_positionsEvaluated;
 		newposEval = newposInfo->get(otherPlayer);
 	      }
-	    else if (isInMoveStack(&moveStack, newposInfo, otherPlayer))
+	    else if (moveStack.isInEvalStack(newposInfo, otherPlayer))
 	      {
 		newposEval = positionEval_even;
 	      }
@@ -579,13 +576,13 @@ const qPositionEvaluation *qSearcher::scanDeeper
 #endif
 	qMove possible_move =
 	  computationTree.getNodePrecedingMove(contendingMoveId);
-	pushMove(&moveStack, posInfo, NULL, player2move, possible_move, NULL);
+	moveStack.pushEval(posInfo, NULL, player2move, possible_move, NULL);
 	currentTreeNode = contendingMoveId;
 	scanDeeper(moveStack.getPos(), otherPlayer, scan_depth, childPositionsComputed);
 	r_positionsEvaluated += childPositionsComputed;
 	depth -= childPositionsComputed;
 	currentTreeNode = computationTree.getNodeParent(currentTreeNode);
-	popMove(&moveStack);
+	moveStack.popEval();
 
 	// Now loop back and re-evaluate the current position's options
       }
