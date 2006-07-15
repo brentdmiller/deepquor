@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qsearcher.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h 1
@@ -27,10 +27,10 @@
 class qSearcher {
 public:
 
-  // Initiates a searcher object with bg thinking on (but bg thinking does
-  // not start until search is called the first time)
+  // Initiates a searcher object
   qSearcher();          // Normal initial position
-  qSearcher(qPosition pos, qPlayer player2move); // Initial position specified
+  qSearcher(const qPosition *pos,
+            qPlayer player2move); // Initial position specified
   ~qSearcher();
 
   // Tell me what the best move is
@@ -91,12 +91,12 @@ private:
    *   up to 300 or 400(?) eventually, as we begin to evaluate
    *   positions with larger number of contibuting computations.
    */
-  const qPositionEvaluation *scanDeeper(qPosition     *pos,
-					qPlayer        player2move,
-					gint32         depth,
+  const qPositionEvaluation *scanDeeper(const qPosition *pos,
+					qPlayer          player2move,
+					gint32           depth,
 					// qPositionEvaluation *evalToBeat,
 					// ??? (carry both alpha & beta?)
-					guint32       &r_positionsEvaluated);
+					guint32         &r_positionsEvaluated);
 
 };
 
@@ -134,8 +134,8 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
 {
  private:
   C *container;
-  C::const_iterator itor;
-  C::const_iterator end;
+  typename C::iterator itor;
+  typename C::iterator end;
 
   // Once we have the move, stuff for looking up the eval:
   qPositionInfoHash* posHash;
@@ -146,14 +146,17 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
   // Constructor:  note that whoseEval is who's eval we get--opposite of
   // whose eval we might be computing.
   qEvalItorFromMvContainer(C*                 parentContainer,
-			   qPosition*         parentPos,
+			   const qPosition*   parentPos,
 			   qPlayer            whoseEval,
-			   qPositionInfoHash* evalHash) {
+			   qPositionInfoHash* evalHash)
+  // Must initialize the qPosition "pos" to avoid warnings
+  :pos(parentPos)
+  {
     container = parentContainer;
-    itor      = container.begin();
-    end       = container.end();
+    itor      = container->begin();
+    end       = container->end();
     posHash   = evalHash;
-    pos       = *parentPos;
+    // pos       = *parentPos; Defined in initialization (see decl above)
     player    = whoseEval;
   };
 
@@ -163,27 +166,38 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
     ++itor;
   };
 
-  qPositionEvaluation const *val() const {
+  qPositionEvaluation const *val() {
     if (itor == end)
       return NULL;
     {
       qPositionInfo  info;
       qPosition newPos = pos;
-      newPos.applyMove(*itor);
-      info = evalHash.getElt(&newPos);
-      return (qPositionEvaluation const*)info.get(player);
+      newPos.applyMove(player, *itor);
+      info = *(posHash->getOrAddElt(&newPos));
+      return static_cast<qPositionEvaluation const*>(info.get(player));
     }
   };
-  bool atEnd() const {
-    return (itor == end ? TRUE : FALSE);
+  bool atEnd() {
+    return ((this->itor == this->end) ? TRUE : FALSE);
   };
 };
 
-
+/* Calculate the score for a position by examining the existing scores of
+ * all possible moves from this position.  If all possible moves are already
+ * known, us the version of ratePositionFromNeighbors() that takes an
+ * iterator argument (below).
+ */
 qPositionInfo *ratePositionFromNeighbors
-(qPosition     *pos,
- qPlayer        player2move,
- qPositionInfo *posInfo,      // optional optimization
- qEvalIterator *evalItor = NULL);
+(const qPosition   *pos,
+ qPlayer            player2move,
+ qPositionInfo     *posInfo, // Optional; optimize by passing when known
+ qPositionInfoHash *posHash,
+ qMoveStack        *moveStack);
+
+qPositionInfo    *ratePositionFromNeighbors
+(const qPosition *pos,
+ qPlayer          player2move,
+ qPositionInfo   *posInfo,
+ qEvalIterator   *evalItor);
 
 #endif // INCLUDE_searcher_h
