@@ -10,15 +10,15 @@
 #include "qmovstack.h"
 #include "qdijkstra.h"
 
-IDSTR("$Id: getmoves.cpp,v 1.3 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: getmoves.cpp,v 1.4 2006/07/15 05:16:38 bmiller Exp $");
 
 
 /****/
 
 qMoveList *getPossiblePawnMoves
-(qPosition *pos,
- qPlayer player2move,
- qMoveList *returnList)
+(const qPosition *pos,
+ qPlayer          player2move,
+ qMoveList       *returnList)
 {
   if (!returnList)
     return NULL;
@@ -118,9 +118,9 @@ qMoveList *getPossiblePawnMoves
   return returnList;
 }
 
-qMoveList *getPlayableMoves(qPosition  *pos,
-		            qMoveStack *movStack,
-		            qMoveList  *moveList)
+qMoveList *getPlayableMoves(const qPosition  *pos,
+		            qMoveStack       *movStack,
+		            qMoveList        *moveList)
 {
   if (!pos || !movStack || !moveList)
     return NULL;
@@ -168,3 +168,8 @@ qMoveList *getPlayableMoves(qPosition  *pos,
   };
   return moveList;
 }
+
+bool pruneUselessMoves(const qPosition  *pos,
+                       qMoveList        *moveList)
+{return true;/*???*/};
+
