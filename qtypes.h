@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qtypes.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -63,8 +63,7 @@ typedef gint8 qDirection;
 class qSquare {
  public:
   guint8 squareNum;
-  const static guint8 maxSquareNum = 80;
-  const static guint8 undefSquareNum = 81;
+  enum { maxSquareNum = 80, undefSquareNum };
 
   // SQUARE_VAL macro included to assist defining qInitialPosition in qpos.cpp
 #define SQUARE_VAL(x,y) ((x)+9*(y))
@@ -186,23 +185,22 @@ class qMove {
 };
 
 // Here's basically an enumeration of all possible pawn moves
-// Should these be statics???
-static const qMove moveUp    = qMove(UP);
-static const qMove moveDown  = qMove(DOWN);
-static const qMove moveLeft  = qMove(LEFT);
-static const qMove moveRight = qMove(RIGHT);
+extern const qMove moveUp;
+extern const qMove moveDown;
+extern const qMove moveLeft;
+extern const qMove moveRight;
 
-static const qMove moveUpUp       = qMove((qDirection)(UP+UP));
-static const qMove moveDownDown   = qMove((qDirection)(DOWN+DOWN));
-static const qMove moveLeftLeft   = qMove((qDirection)(LEFT+LEFT));
-static const qMove moveRightRight = qMove((qDirection)(RIGHT+RIGHT));
+extern const qMove moveUpUp;
+extern const qMove moveDownDown;
+extern const qMove moveLeftLeft;
+extern const qMove moveRightRight;
 
-static const qMove moveUL = qMove((qDirection)(UP+LEFT));
-static const qMove moveUR = qMove((qDirection)(UP+RIGHT));
-static const qMove moveDL = qMove((qDirection)(DOWN+LEFT));
-static const qMove moveDR = qMove((qDirection)(DOWN+RIGHT));
+extern const qMove moveUL;
+extern const qMove moveUR;
+extern const qMove moveDL;
+extern const qMove moveDR;
 
-static const qMove moveNull = qMove((guint8)0);
+extern const qMove moveNull;
 
 
 /* Notes:
