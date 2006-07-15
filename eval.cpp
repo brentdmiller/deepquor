@@ -11,16 +11,18 @@
 #include "qposinfo.h"
 #include "qposhash.h"
 #include "qmovstack.h"
+#include "qdijkstra.h"
+#include "qsearcher.h"
+#include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.5 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.6 2006/07/15 05:16:38 bmiller Exp $");
 
 #define qNO_PATH -1
 
 /* Score bonuses for various things */
-#define qScore_PLY   PLY_SCORE  /* Bonus for the player whose turn it is */
-#define qScore_TURN  TURN_SCORE /* Bonus for a whole move ahead          */
-#define qScore_WALL  TURN_SCORE /* Maybe this should be a function???    */
+static const gint16 qScore_PLY=PLY_SCORE;  // Bonus for player whose turn it is
+static const gint16 qScore_TURN=TURN_SCORE;// Bonus for a whole move ahead
 
 /* Our strategy for evaluating a position is based primarily on the current
  * player's number of moves required to reach the end minus the opponent's
@@ -32,20 +34,26 @@ IDSTR("$Id: eval.cpp,v 1.5 2006/07/09 06:37:38 bmiller Exp $");
  */
 
 #ifdef WALL_SCORE_FUDGE
-static gint16 wallScoreFudge[][] = WALL_SCORE_FUDGE;
-#define WALL_SCORE(p, o) (wallScoreFudge[(p)][(o)])
+static gint16 wallScoreFudge[][11] = WALL_SCORE_FUDGE;
+inline static gint16 WALL_SCORE(guint8 p, guint8 o)
+  { return wallScoreFudge[p][o]; };
 #else
-#define WALL_SCORE(p, o) (qScore_WALL * ((p) - (o)))
+inline static gint16 WALL_SCORE(guint8 p, guint8 o)
+  { return (TURN_SCORE*(p-o)); };
 #endif
 
 #ifdef WALL_COMPLEXITY_FUDGE
-static guint8 wallComplexityFudge[] = WALL_COMPLEXITY_FUDGE;
-#define WALL_COMPLEXITY(p, o) (wallComplexityFudge[(p)])
+static guint8 wallComplexityFudge[][11] = WALL_COMPLEXITY_FUDGE;
+inline static gint16 WALL_COMPLEXITY(guint8 p, guint8 o)
+  { return wallComplexityFudge[p][o]; };
 #else
 #define WALL_COMPLEXITY(p, o) (PLY_SCORE*((p)+(o)))
+inline static gint16 WALL_COMPLEXITY(guint8 p, guint8 o)
+  { return PLY_SCORE*(p+o); };
 #endif
 
 
+#if 0 /* Now using default hashFunc defined in qposhash.cpp */
 // Passed to qPositionHash
 guint16 CBhashFunc(qPosition p)
 {
@@ -56,6 +64,7 @@ void CBinitFunc(qPositionInfo posInfo, qPosition p)
   posInfo->initEval();
   /* posInfo->pos = *p; position not stored in posInfo */
 }
+#endif
 
 inline guint16 scoreSpread(gint8 *sortedFinishDistances)
 {
@@ -85,7 +94,7 @@ qPositionEvaluation const *ratePositionByComputation
  ****************************************************************************/
 {
   int     distance[2];
-  qPlayer opponent(player2move.getOtherPlayerId);
+  qPlayer opponent(player2move.getOtherPlayerId());
   qDijkstraArg darg;
 
 #ifdef USE_FINISH_SPREAD
@@ -95,19 +104,25 @@ qPositionEvaluation const *ratePositionByComputation
   darg.getAllRoutes = FALSE;
 #endif
 
-  for (int player=0; player<=BLACK; ++player) {
-    evaluation[player].computations = 1;
-    evaluation[player].complexity = BASE_COMPLEXITY +
-      WALL_COMPLEXITY(numWallsLeft(player), numWallsLeft(opponent));
+  for (gint8 playerNum=0; playerNum <= qPlayer::BlackPlayer; ++playerNum) {
+    qPlayer player(playerNum);
+#ifdef HAVE_NUM_COMPUTATIONS
+    posInfo->setComputations(player, 1).computations = 1;
+#endif
+    posInfo->setScore(player, qScore_PLY);
+    posInfo->setComplexity(player,
+      BASE_COMPLEXITY +
+      WALL_COMPLEXITY(pos.numWallsLeft(player),
+                      pos.numWallsLeft(player.otherPlayer())));
 
     /* Use Dijkstra algorithm to find shortest path for each player */
     qDarg_CLEAR_CACHE(darg);
     darg.player = player;
     darg.pos    = &pos;
 
-    if (qDijkstra(player, &darg))
+    if (qDijkstra(&darg))
       {
-	distance[player] = darg.dist[0];
+	distance[player.getPlayerId()] = darg.dist[0];
 #ifdef USE_FINISH_SPREAD
 	spread[player]   = scoreSpread(darg.dist);
 #endif
@@ -120,13 +135,12 @@ qPositionEvaluation const *ratePositionByComputation
 	 */
 
 	// Snip opponent from position; we'll put the opponent "under" our pawn
-	guint8 oldWhite, oldBlad;
-	oldWhite = pos.getWhitePos;
-	oldBlack = pos.getBlackPos;
-	if (player==WHITE) {
-	  pos.setBlackPos(oldWhite);
+	qSquare oldWhite(pos.getWhitePawn());
+        qSquare oldBlack(pos.getBlackPawn());
+	if (player.isWhite()) {
+	  pos.setBlackPawn(oldWhite);
 	} else {
-	  pos.setWhitePos(oldBlack);
+	  pos.setWhitePawn(oldBlack);
 	}
 
 	// I was tempted to try recycling previous graph used to compute
@@ -135,27 +149,38 @@ qPositionEvaluation const *ratePositionByComputation
 	// is described in a comment in qcomptree.h
 
 	bool pathFound;
-	pathFound = qDijkstra(player, &darg);
+	pathFound = qDijkstra(&darg);
 
 	// Put the opposing pawn back
-	pos.setWhitePos(oldWhite);
-	pos.setBlackPos(oldBlack);
+	pos.setWhitePawn(oldWhite);
+	pos.setBlackPawn(oldBlack);
 
 	if (!pathFound)
 	  {
 	    /* Still no path exists; this is not a legal position */
-	    setPositionIsIllegal();
-	    evaluation[0] = evaluation[1] = {0, 0, 1};
+	    posInfo->setPositionIsIllegal();
+	    //evaluation[0] = evaluation[1] = {0, 0, 1};
+            posInfo->setScore(qPlayer::WhitePlayer, 0);
+            posInfo->setScore(qPlayer::BlackPlayer, 0);
+            posInfo->setComplexity(qPlayer::WhitePlayer, 0);
+            posInfo->setComplexity(qPlayer::BlackPlayer, 0);
+#ifdef HAVE_NUM_COMPUTATIONS
+            posInfo->setComputations(qPlayer::WhitePlayer, 1);
+            posInfo->setComputations(qPlayer::BlackPlayer, 1);
+#endif
 	    return NULL;
 	  }
 	// Path exists but is blocked, so our score isn't as accurate.
-	evaluation[player].complexity += BLOCKED_POSITION_FUDGE;
+	//evaluation[player].complexity += BLOCKED_POSITION_FUDGE;
+        posInfo->setComplexity(player,
+                               posInfo->getComplexity(player) + BLOCKED_POSITION_FUDGE);
       }
   }
 
   {
-    int tmp = qScore_TURN * (distance[player] - distance[1-player]) +
-      (player==WHITE ?
+    gint16 tmp = qScore_TURN * (distance[player2move.getPlayerId()] -
+                             distance[opponent.getPlayerId()]) +
+      (player2move.isWhite() ?
        WALL_SCORE(pos.numWhiteWallsLeft(), pos.numBlackWallsLeft()) :
        WALL_SCORE(pos.numBlackWallsLeft(), pos.numWhiteWallsLeft()));
 
@@ -175,13 +200,13 @@ qPositionEvaluation const *ratePositionByComputation
     goal_line_spread_factor[opponent] =
       numWallsLeft(player) ? spread[opponent] : 0;
 
-    score_adjust =
+    gint16 score_adjust =
       (goal_line_spread_factor[player] - goal_line_spread_factor[opponent])/2;
-    complexity_adjust =
+    gint16 complexity_adjust =
       goal_line_spread_factor[player] + goal_line_spread_factor[opponent];
 #else
-    score_adjust = 0;
-    complexity_adjust = 0;
+    gint16 score_adjust = 0;
+    gint16 complexity_adjust = 0;
 #endif
 
     tmp = tmp - score_adjust;
@@ -194,75 +219,121 @@ qPositionEvaluation const *ratePositionByComputation
     // number of possible finishing squares(?)???
 
     // Store the scores for each player
-    if (distance[player2move] <= 1) {
-      evaluation[player].computations = 1;
-      evaluation[player].complexity   = 0;
-      evaluation[player].score        = qScore_won;
+    if (distance[player2move.getPlayerId()] <= 1) {
+      //evaluation[player].score        = qScore_won;
+      //evaluation[player].complexity   = 0;
+      posInfo->setScore(player2move, qScore_won);
+      posInfo->setComplexity(player2move, 0);
+#ifdef HAVE_NUM_COMPUTATIONS
+      //evaluation[player].computations = 1;
+      posInfo->setComputations(player2move, 1);
+#endif
     } else {
-      evaluation[player].score   = 32 + tmp;
-      evaluation[player].complexity = base_complexity + complexity_adjust;
+      posInfo->setScore(     player2move,
+                             posInfo->getScore(player2move) + tmp);
+      posInfo->setComplexity(player2move,
+                             posInfo->getComplexity(player2move) + complexity_adjust);
     }
 
-    if (distance[opponent] <= 1) {
-      evaluation[opponent].computations = 1;
-      evaluation[opponent].complexity   = 0;
-      evaluation[opponent].score        = qScore_won;
+    if (distance[opponent.getPlayerId()] <= 1) {
+      posInfo->setScore     (opponent, qScore_won);
+      posInfo->setComplexity(opponent, 0);
+#ifdef HAVE_NUM_COMPUTATIONS
+      posInfo->setComputations(opponent, 1);
+#endif
     } else {
-      evaluation[opponent].score = 32 - tmp;
-      evaluation[opponent].complexity = base_complexity + complexity_adjust;
+      posInfo->setScore     (opponent,
+                             posInfo->getScore(opponent) - tmp);
+      posInfo->setComplexity(player2move,
+                             posInfo->getComplexity(player2move) + complexity_adjust);
     }
   }
-  return &(evaluation[player]);
+  return posInfo->get(player2move.getPlayerId());
 }
 
-qPositionInfo  *ratePositionFromNeighbors
-(qPosition     *pos,
- qPlayer        player2move,
- qPositionInfo *posInfo,      // optional optimization
- qEvalIterator *evalItor)
+inline void coalesceScores(const qPositionEvaluation &bestEval,
+                           const qPositionEvaluation &currEval,
+                           qPositionEvaluation       &newEval)
+{
+  // This protocol needs major tweaking...it should take into account
+  // things like who is winning for how much to weigh complexity, etc.
+  newEval.score += (currEval.score+currEval.complexity) - max(currEval.score-currEval.complexity, bestEval.score-bestEval.complexity)/(2*currEval.complexity + bestEval.score - currEval.score);
+  newEval.complexity += (3*currEval.complexity) / (10 + bestEval.score  - currEval.score);
+}
+
+qPositionInfo    *ratePositionFromNeighbors
+(const qPosition *pos,
+ qPlayer          player2move,
+ qPositionInfo   *posInfo,
+ qEvalIterator   *evalItor)
 /****************************************************************************
  *
- * Examine position and populate *out with score/complexity/computations
- *  of position's evaluation.
- *  in the call to EvaluateDraw() in search()/quiesce().
+ * Examine position and populate this->evaluation[player2move] with
+ *  score/complexity/computations of position's evaluation.
  * Fills in this->evaluation[player2move];
  *
  ****************************************************************************/
 {
-  std::auto_ptr<qMoveList> mvList(new mvList(NULL));
+  //if (!posInfo)
+  //   posInfo = posHash.getOrAddElt(pos));
+  g_assert(posInfo);
 
-  // 1. Calculate all legal moves
-  if (!evalItor) {
+  qPositionEvaluation *newEval = posInfo->get(player2move);
 
-    // Create an evalItor from pos
-    getPlayableMoves(pos, NULL, mvList.get());
-
-    // Use a smart pointer???
-    evalItor = qEvalItorFromMvContainer(&mvList,
-					pos,
-					player2move
-					evalHash); // ???
-  }
-
-
-  // 2. Look up eval of each legal move
-  //    (or zero score if resulting position seen)
-  //    rateByComputation for new positions
+  // Look up eval of each legal move
+  //   (or zero score if resulting position seen)
+  //   rateByComputation for new positions
 
   // Can this be done in one pass??? */
-  qEvalIterator currentMove;
+  if (!evalItor)
+    return NULL;
+
+ list<const qPositionEvaluation *> scoreList;
+
+ if (evalItor->atEnd())
+   { // No neighbors--we have no legal moves!  Let's call it a draw
+     newEval->score = 0;
+     newEval->complexity = 0;
+#ifdef HAVE_NUM_COMPUTATIONS
+     newEval->computations = 0;
+#endif
+     g_assert(0); // This shouldn't have happened, so let's take a look.
+     return posInfo;
+   }
   
-  for (currentMove  = qMoveList->begin(), bestMove = *currentMove;
-       currentMove != qMoveList->end();
-       currentMove++)
+  // 1. Find the best-scoring move
+  // bestMove is always at the front of the list
+  const qPositionEvaluation *bestMove, *currMove;
+  bestMove = evalItor->val();
+  scoreList.push_front(bestMove), evalItor->next();
+  for ( ;
+       !evalItor->atEnd();
+       evalItor->next())
     {
-      if ((*currentMove)
-      bestMove = 
+      currMove = evalItor->val();
+      // Is score alone the way to find the best move?  We should probably
+      // Take complexity and who is winning into account.
+      if (currMove->score > bestMove->score) {
+        bestMove = currMove;
+        scoreList.push_front(currMove);
+      } else {
+        scoreList.push_back(currMove);
+      }
     }
 
-  // 3. Sort all evals (how?  score + complexity/20?)
-  // 4. Combine evals into current positions eval.
-  //    ??? Take into accont minmax of last two plies?
+  // 2. Combine evals into current positions eval.
+  //    Take into accont minmax of last two plies???
+  *newEval = *bestMove;
+  scoreList.pop_front();
+  while(!scoreList.empty()) {
+    currMove = scoreList.back();
+    scoreList.pop_back();
+    if ((currMove->score + currMove->complexity) <
+        (bestMove->score - bestMove->complexity))
+      break;
+
+    coalesceScores(*bestMove, *currMove, *newEval);
+  }
 
   /*
   Score should be the negation of opponent's best move.  Perhaps the score
@@ -291,28 +362,40 @@ qPositionInfo  *ratePositionFromNeighbors
    * new complexity = that move's complexity * .7 (+/- fudge factors)
    */
 
+#if 0
   score = ???;
   computations = sum of neighbors computations;
   complexity = ???; /* set to 0 for solved win/loss/draw
 		     * higher for significant scores with high complexity or
 		     * lots of opponents options with high complexity
 		     */
+#endif
+
   // 5. Return all data so calling routine can decide if further
   //    evaluation is needed.
   // Note:  if moveList/evalList are populated when called (maybe with
   //        some evalList items NULLed out), leverage those values???
+  return posInfo;
+}
 
+qPositionInfo *ratePositionFromNeighbors
+(const qPosition   *pos,
+ qPlayer            player2move,
+ qPositionInfo     *posInfo,      // optional optimization
+ qPositionInfoHash *posHash,
+ qMoveStack        *moveStack)
+{
+  //std::auto_ptr<qMoveList> mvList(new mvList(NULL));
+  qMoveList      possMoves;
 
-  /*
-   * 1. Get all possible moves
-   */
-  // Get all possible wall locations (some may be illegal moves)
-  glist wallVacancies = moveStack.getPossibleWallLocations();
-  // Examine possible pawn moves for player
-  (???);
+  if (!posInfo)
+     posInfo = posHash->getOrAddElt(pos);
 
-  /*
-   * 2. evaluate each move
-   */
-  
+  // Create an evalItor from pos
+  getPlayableMoves(pos, moveStack, &possMoves);
+
+  qEvalItorFromMvContainer<qMoveList>
+     evalItor(&possMoves, pos, player2move, posHash);
+
+  return ratePositionFromNeighbors(pos, player2move, posInfo, &evalItor);
 }
