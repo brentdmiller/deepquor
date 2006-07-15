@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: getmoves.h,v 1.3 2006/07/09 06:37:38 bmiller Exp $
+// $Id: getmoves.h,v 1.4 2006/07/15 05:16:38 bmiller Exp $
 
 #ifndef INCLUDE_getmoves_h
 #define INCLUDE_getmoves_h 1
@@ -20,18 +20,18 @@
 // Returns listToPopulate on success, NULL on failure
 // Note: uses the moveStack to accelerate finding possible moves.
 // See the moveStack class for more info.
-qMoveList *getPlayableMoves(qPosition   *pos,
-			    qMoveStack  *movStack,
-			    qMoveList   *listToPopulate);
+qMoveList *getPlayableMoves(const qPosition   *pos,
+			    qMoveStack        *movStack,
+			    qMoveList         *listToPopulate);
 
 
 // Populates list of all legally playable pawn moves for given player & pos
 // Inserts new moves at end of returnList.
 // Returns returnList on success, NULL on failure
 qMoveList *getPossiblePawnMoves
-(qPosition *pos,
- qPlayer player2move,
- qMoveList *returnList);
+(const qPosition *pos,
+ qPlayer          player2move,
+ qMoveList       *returnList);
 
 
 // !!! A very good optimization would be if we found a way to throw out all
@@ -40,7 +40,7 @@ qMoveList *getPossiblePawnMoves
 // "throw-away" move.
 // Examining the "offensive" and "defensive" wall strategies used by
 // hardquor might be useful here.
-bool pruneUselessMoves(qPosition  *pos,
-		       qMoveList  *moveList);
+bool pruneUselessMoves(const qPosition  *pos,
+		       qMoveList        *moveList);
 
 #endif // INCLUDE_getmoves_h
