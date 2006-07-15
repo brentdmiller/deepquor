@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.7 2006/07/11 23:26:27 bmiller Exp $
+// $Id: qposition.h,v 1.8 2006/07/15 05:16:38 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -44,6 +44,7 @@ class qPosition {
       g_assert(black_walls_left <= 15);
       numwalls = (black_walls_left<<4) + white_walls_left;
     };
+  qPosition(const qPosition *prev) { *this = *prev; };
 
   inline bool isWon(qPlayer p) const
     { return((p.isWhite() ? (white_pawn_pos.y()==8) : black_pawn_pos.y()==0)); }
