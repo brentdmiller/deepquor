@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
+// $Id: qtypes.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -184,6 +184,13 @@ class qMove {
   bool   exists(void) const { return move; };
 };
 
+
+/********************
+ * USEFUL CONSTANTS *
+ ********************/
+extern const qPlayer qPlayer_white;
+extern const qPlayer qPlayer_black;
+
 // Here's basically an enumeration of all possible pawn moves
 extern const qMove moveUp;
 extern const qMove moveDown;
@@ -201,7 +208,6 @@ extern const qMove moveDL;
 extern const qMove moveDR;
 
 extern const qMove moveNull;
-
 
 /* Notes:
  * For hashed positions, we should generally give preference to keeping
