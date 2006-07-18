@@ -8,10 +8,12 @@
 
 #include "qtypes.h"
 
-IDSTR("$Id: qtypes.cpp,v 1.1 2006/07/09 17:09:38 bmiller Exp $");
+IDSTR("$Id: qtypes.cpp,v 1.2 2006/07/18 06:55:33 bmiller Exp $");
 
 
 /****/
+const qPlayer qPlayer_white(qPlayer::WhitePlayer);
+const qPlayer qPlayer_black(qPlayer::BlackPlayer);
 
 const qMove moveUp    = qMove(UP);
 const qMove moveDown  = qMove(DOWN);
