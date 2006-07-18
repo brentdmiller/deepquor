@@ -10,7 +10,7 @@
 #include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.6 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.7 2006/07/18 18:58:09 bmiller Exp $");
 
 
 /****/
@@ -95,8 +95,8 @@ guint16 qGrowHash<keyType, valType>::defaultqGrowHashFunc
 
 template <class keyType, class valType>
 qGrowHash<keyType, valType>::qGrowHash
-(qGrowHash_hashFunc h,
- qGrowHash_eltInitFunc i)
+(qGrowHash_eltInitFunc i,
+ qGrowHash_hashFunc h)
 {
   hashBuffer = new qGrowHashEltList[POSITION_HASH_BUCKETS];
   numElts = 0;
