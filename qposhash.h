@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposhash.h,v 1.5 2006/07/09 06:37:38 bmiller Exp $
+// $Id: qposhash.h,v 1.6 2006/07/18 18:58:09 bmiller Exp $
 
 #ifndef INCLUDE_poshash_h
 #define INCLUDE_poshash_h 1
@@ -77,8 +77,8 @@ public:
   // the hashFunc's return value modulo POSITION_HASH_BUCKETS
   // Default hashFunc does "pretty good" hashing based on sizeof(keyType)
   qGrowHash
-    (qGrowHash_hashFunc hashCallbackFunc=(&qGrowHash::defaultqGrowHashFunc),
-     qGrowHash_eltInitFunc initCallbackFunc=NULL);
+    (qGrowHash_eltInitFunc initCallbackFunc=NULL,
+     qGrowHash_hashFunc hashCallbackFunc=(&qGrowHash::defaultqGrowHashFunc));
 
   /* Make constructor take paramaters as args???
    *  int32_t           numHashBuckets,  // approx. mem/sizeof(key + val)
