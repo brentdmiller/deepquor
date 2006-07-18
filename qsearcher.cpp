@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.8 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.9 2006/07/18 18:58:09 bmiller Exp $");
 
 
 /****/
@@ -19,6 +19,15 @@ IDSTR("$Id: qsearcher.cpp,v 1.8 2006/07/18 06:55:33 bmiller Exp $");
 // Convenience utility
 guint32 milliseconds_since2000(void);
 
+// Used by qPositionInfoHash
+void my_posHashEltInitFunc
+(qPositionInfo *posInfo, const qPosition *pos)
+{
+  g_assert(posInfo);
+  if (!posInfo)
+    return;
+  posInfo->initEval();
+}
 
 /* class qCompTreeChildEdgeEvalIterator - used internally
  */
@@ -64,7 +73,8 @@ qSearcher::qSearcher
 :moveStack(pos, player2move),
  computationTree(),
  currentTreeNode(0),
- wallMovesSinceTableUpdate(0)
+ wallMovesSinceTableUpdate(0),
+ posHash(&my_posHashEltInitFunc)
 { ; }
 
 qSearcher::~qSearcher()
