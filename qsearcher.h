@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
+// $Id: qsearcher.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h 1
@@ -28,9 +28,8 @@ class qSearcher {
 public:
 
   // Initiates a searcher object
-  qSearcher();          // Normal initial position
-  qSearcher(const qPosition *pos,
-            qPlayer player2move); // Initial position specified
+  qSearcher(const qPosition *pos          = &qInitialPosition,
+            qPlayer          player2move  = qPlayer_white);
   ~qSearcher();
 
   // Tell me what the best move is
@@ -67,7 +66,7 @@ private:
    // Where we store what we're thinking about
   qMoveStack   moveStack;
   qComputationTree computationTree;
-  qComputationTree::qComputationTreeNodeId currentTreeNode;
+  qComputationTreeNodeId currentTreeNode;
   guint8       wallMovesSinceTableUpdate;
 
   // Internal search routine used by both search() and background searches
