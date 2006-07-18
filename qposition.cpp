@@ -10,8 +10,10 @@
 #include "qposition.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposition.cpp,v 1.5 2006/07/11 23:26:27 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.6 2006/07/18 06:55:33 bmiller Exp $");
 
+
+/****/
 
 // Is this how to have a global that is initialized by the compiler???
 const guint8  blankRows[8] = {0,0,0,0,0,0,0,0};

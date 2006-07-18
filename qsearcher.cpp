@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005
+ * Copyright (c) 2005-2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE file for terms.
@@ -11,7 +11,10 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.7 2006/07/15 05:16:38 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.8 2006/07/18 06:55:33 bmiller Exp $");
+
+
+/****/
 
 // Convenience utility
 guint32 milliseconds_since2000(void);
@@ -22,13 +25,13 @@ guint32 milliseconds_since2000(void);
 class qCompTreeChildEdgeEvalIterator:public qEvalIterator {
 private:
   qComputationTree *compTree;
-  qComputationTree::qComputationTreeNodeId nodeId;
+  qComputationTreeNodeId nodeId;
   guint8 edgeIdx;
 
 public:
   // Walks through position in a qCompTree node
   qCompTreeChildEdgeEvalIterator(qComputationTree *tree,
-				qComputationTree::qComputationTreeNodeId node)
+				qComputationTreeNodeId node)
   {
     compTree = tree;
     nodeId   = node;
@@ -41,20 +44,32 @@ public:
   };
 
   qPositionEvaluation const *val() {
-    qComputationTree::qComputationTreeNodeId childId =
+    qComputationTreeNodeId childId =
       compTree->getNthChild(nodeId, edgeIdx);
-    if (childId == qComputationTree::qComputationTreeNode_invalid)
+    if (childId == qComputationTreeNode_invalid)
       return NULL;
     return compTree->getNodeEval(childId);
   };
   bool atEnd() {
-    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTree::qComputationTreeNode_invalid) ? FALSE : TRUE;
+    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTreeNode_invalid) ? FALSE : TRUE;
   };
 };
 
 /*******************
  * class qSearcher *
  ******************/
+qSearcher::qSearcher
+(const qPosition *pos,
+ qPlayer          player2move)
+:moveStack(pos, player2move),
+ computationTree(),
+ currentTreeNode(0),
+ wallMovesSinceTableUpdate(0)
+{ ; }
+
+qSearcher::~qSearcher()
+{ ; }
+
 void
 qSearcher::think
 (qPlayer player2move,
@@ -209,7 +224,7 @@ qSearcher::iSearch
     // Find current top-scoring move
     qPositionEvaluation const *bestEval;
     {
-      qComputationTree::qComputationTreeNodeId bestPosId;
+      qComputationTreeNodeId bestPosId;
 
       bestPosId = computationTree.getTopScoringChild(currentTreeNode);
 
@@ -248,7 +263,7 @@ qSearcher::iSearch
     //   Yes: return bestmove; not worth further evaluation
     {
       gint16 minScore;
-      qComputationTree::qComputationTreeNodeId curPosId;
+      qComputationTreeNodeId curPosId;
       qPositionEvaluation const *curEval;
       bool worthRefining = FALSE;
 
@@ -420,7 +435,7 @@ const qPositionEvaluation *qSearcher::scanDeeper
   if (depth < 0)
     {
       guint8 move_idx;
-      qComputationTree::qComputationTreeNodeId next_position_id;
+      qComputationTreeNodeId next_position_id;
 
       // Make sure we've stored the list of moves in computationTree
       if (!computationTree.getNthChild(currentTreeNode, 0)) {
@@ -509,7 +524,7 @@ const qPositionEvaluation *qSearcher::scanDeeper
 	    else
 	      newposEval = newposInfo->get(otherPlayer);
 
-	    qComputationTree::qComputationTreeNodeId new_node;
+	    qComputationTreeNodeId new_node;
 	    new_node = computationTree.addNodeChild(currentTreeNode,
 						    possible_move,
 						    newposEval);
@@ -524,7 +539,7 @@ const qPositionEvaluation *qSearcher::scanDeeper
 	// Throwing out any moves that are obviously not "contendors"
 	// (i.e. score + complexity < highest score - corresponding complexity)
 	// pick which move to refine.
-	qComputationTree::qComputationTreeNodeId contendingMoveId, bestMoveId, curMoveId;
+	qComputationTreeNodeId contendingMoveId, bestMoveId, curMoveId;
 	qPositionEvaluation const *bestEval;
 	qPositionEvaluation const *curEval;
 	gint16 minScore;
