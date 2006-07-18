@@ -10,8 +10,10 @@
 #include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.5 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.6 2006/07/18 06:55:33 bmiller Exp $");
 
+
+/****/
 
 /*********************** 
  * class qGrowHash     *

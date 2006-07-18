@@ -8,8 +8,10 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.8 2006/07/11 06:02:54 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.9 2006/07/18 06:55:33 bmiller Exp $");
 
+
+/****/
 
 /***********************
  * class qWallMoveList *

@@ -9,7 +9,10 @@
 #include "qposition.h"
 #include <deque>
 
-IDSTR("$Id: qdijkstra.cpp,v 1.2 2006/07/09 06:37:38 bmiller Exp $");
+IDSTR("$Id: qdijkstra.cpp,v 1.3 2006/07/18 06:55:33 bmiller Exp $");
+
+
+/****/
 
 int qDijkstra
 (qDijkstraArg* arg)
