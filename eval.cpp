@@ -16,7 +16,10 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.6 2006/07/15 05:16:38 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.7 2006/07/18 06:55:33 bmiller Exp $");
+
+
+/****/
 
 #define qNO_PATH -1
 
@@ -81,7 +84,7 @@ inline guint16 scoreSpread(gint8 *sortedFinishDistances)
 
 
 qPositionEvaluation const *ratePositionByComputation
-(qPlayer player2move, qPosition pos, qPositionInfo *posInfo)
+(qPosition pos, qPlayer player2move, qPositionInfo *posInfo)
 /****************************************************************************
  *
  * Examine position and populate *posInfo with score/complexity/computations
@@ -160,13 +163,13 @@ qPositionEvaluation const *ratePositionByComputation
 	    /* Still no path exists; this is not a legal position */
 	    posInfo->setPositionIsIllegal();
 	    //evaluation[0] = evaluation[1] = {0, 0, 1};
-            posInfo->setScore(qPlayer::WhitePlayer, 0);
-            posInfo->setScore(qPlayer::BlackPlayer, 0);
-            posInfo->setComplexity(qPlayer::WhitePlayer, 0);
-            posInfo->setComplexity(qPlayer::BlackPlayer, 0);
+            posInfo->setScore(qPlayer_white, 0);
+            posInfo->setScore(qPlayer_black, 0);
+            posInfo->setComplexity(qPlayer_white, 0);
+            posInfo->setComplexity(qPlayer_black, 0);
 #ifdef HAVE_NUM_COMPUTATIONS
-            posInfo->setComputations(qPlayer::WhitePlayer, 1);
-            posInfo->setComputations(qPlayer::BlackPlayer, 1);
+            posInfo->setComputations(qPlayer_white, 1);
+            posInfo->setComputations(qPlayer_black, 1);
 #endif
 	    return NULL;
 	  }
@@ -312,7 +315,8 @@ qPositionInfo    *ratePositionFromNeighbors
     {
       currMove = evalItor->val();
       // Is score alone the way to find the best move?  We should probably
-      // Take complexity and who is winning into account.
+      // Take complexity and who is winning into account.  Especially because
+      // a complexity-zero win is always better than a non-zero complexity
       if (currMove->score > bestMove->score) {
         bestMove = currMove;
         scoreList.push_front(currMove);
