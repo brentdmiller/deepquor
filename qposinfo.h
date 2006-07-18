@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposinfo.h,v 1.6 2006/07/15 05:16:38 bmiller Exp $
+// $Id: qposinfo.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
 #define INCLUDE_posinfo_h 1
@@ -28,10 +28,10 @@ typedef struct _qPositionEvaluation {
 } qPositionEvaluation;
 
 // Maximum complexity
-#define qComplexity_max  (guint16)0xffff
+#define qComplexity_max  ((guint16)0xffff)
 
-#define qScore_won   (gint16)0x7fff
-#define qScore_lost  (gint16)-0x7fff
+#define qScore_won   ((gint16)0x7fff)
+#define qScore_lost  ((gint16)-0x7fff)
 
 // Useful, for example, in a line of thinking that repeats
 extern const qPositionEvaluation *positionEval_even;
@@ -77,9 +77,9 @@ extern const qPositionEvaluation *positionEval_none;
  */
 class qPositionInfo {
  public:
-  bool          evalExists(qPlayer p);  // Return if a score/cmplxty are set
-  bool          initEval(qPlayer p);    // Initialize eval to !exists for p
-  bool          initEval();             // Initialize to !exists for both
+  bool evalExists(qPlayer p) const; // Return if a score/cmplxty are set
+  bool initEval(qPlayer p);         // Initialize eval to !exists for p
+  bool initEval();                  // Initialize to !exists for both
 
   // Note:  clients allowed to directly modify returned pointer contents
   // (This should be a const member function, but gcc doesn't like a const
@@ -96,10 +96,10 @@ class qPositionInfo {
   inline void         setScore(qPlayer p, gint16 val)
     { evaluation[p.getPlayerId()].score=val; };
 
-  inline guint8       getComplexity(qPlayer p) const
+  inline guint16      getComplexity(qPlayer p) const
     { return evaluation[p.getPlayerId()].complexity;};
 
-  inline void         setComplexity(qPlayer p, guint8 val)
+  inline void         setComplexity(qPlayer p, guint16 val)
     { evaluation[p.getPlayerId()].complexity=val;};
 
 #ifdef HAVE_NUM_COMPUTATIONS
