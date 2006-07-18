@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.8 2006/07/11 06:02:54 bmiller Exp $
+// $Id: qmovstack.h,v 1.9 2006/07/18 06:55:33 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
@@ -111,7 +111,7 @@ class qMoveStack {
   // Initialize from an existing position
   // Calls initWallMoveTable() for you.
   qMoveStack(const qPosition* pos = &qInitialPosition,
-	     qPlayer player2move  = qPlayer::WhitePlayer);
+	     qPlayer player2move  = qPlayer_white);
 
   ~qMoveStack();
 
