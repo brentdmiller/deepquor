@@ -10,7 +10,7 @@
 #include "qposition.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposition.cpp,v 1.6 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.7 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -41,7 +41,7 @@ void qPosition::applyMove
 	  return;
 	setWhiteWallsLeft(n-1);
       } else {
-	g_assert(p.isBlack());
+	g_assert(player.isBlack());
 	int n = numBlackWallsLeft();
 	if (n == 0)
 	  return;
