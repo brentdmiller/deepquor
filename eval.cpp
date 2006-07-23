@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.7 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.8 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -260,7 +260,7 @@ inline void coalesceScores(const qPositionEvaluation &bestEval,
 {
   // This protocol needs major tweaking...it should take into account
   // things like who is winning for how much to weigh complexity, etc.
-  newEval.score += (currEval.score+currEval.complexity) - max(currEval.score-currEval.complexity, bestEval.score-bestEval.complexity)/(2*currEval.complexity + bestEval.score - currEval.score);
+  newEval.score += ((currEval.score+currEval.complexity) - max(currEval.score-currEval.complexity, bestEval.score-bestEval.complexity))/(1+2*currEval.complexity + bestEval.score - currEval.score);
   newEval.complexity += (3*currEval.complexity) / (10 + bestEval.score  - currEval.score);
 }
 
@@ -328,17 +328,27 @@ qPositionInfo    *ratePositionFromNeighbors
   // 2. Combine evals into current positions eval.
   //    Take into accont minmax of last two plies???
   *newEval = *bestMove;
+
+  // If opponent has a won position, we already know it's lost for us.
+  if (bestMove->score == qScore_won) {
+    newEval->score = qScore_lost;
+    return posInfo;
+  }
+
   scoreList.pop_front();
   while(!scoreList.empty()) {
     currMove = scoreList.back();
     scoreList.pop_back();
+    if (currMove->score == qScore_lost)
+      break; // This sure isn't going to improve the bestMove
     if ((currMove->score + currMove->complexity) <
         (bestMove->score - bestMove->complexity))
-      break;
+      continue;
 
     coalesceScores(*bestMove, *currMove, *newEval);
   }
 
+  newEval->score = -newEval->score;
   /*
   Score should be the negation of opponent's best move.  Perhaps the score
     should be decreased slightly with the number of opponent's moves whose
