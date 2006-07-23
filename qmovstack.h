@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.9 2006/07/18 06:55:33 bmiller Exp $
+// $Id: qmovstack.h,v 1.10 2006/07/23 04:29:56 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
@@ -16,6 +16,7 @@
 #include "qposhash.h"
 #include "parameters.h"
 #include <deque>
+#include <list>
 
 
 /* Idea:
@@ -71,11 +72,13 @@ class qWallMoveInfoList {
 
   qWallMoveInfo *getHead(void)  const { return head; };
   qWallMoveInfo *getTail(void)  const { return tail; };
-  void           clearList(void){ head = tail = NULL; };
+  void           clearList(void){ head = tail = NULL; DEBUG_CODE(numElts=0;) };
 
  private:
   qWallMoveInfo *head;
   qWallMoveInfo *tail;
+  DEBUG_CODE(int numElts;)
+  DEBUG_CODE(void verifyEltCount();)
 };
 
 struct _wallMoveInfo {
@@ -83,8 +86,9 @@ struct _wallMoveInfo {
   bool possible;         // Is this move currently possible?
 
   // List of which moves get eliminated by this move
-  class qWallMoveInfoList eliminates;
+  list<qWallMoveInfo*> eliminates;
 
+  // data needed for holding this instance in qWallMoveInfoLists
   qWallMoveInfo *prev;
   qWallMoveInfo *next;
 };
@@ -168,7 +172,7 @@ class qMoveStack {
 
   // These functions mark positions under evaluation so we can check what
   // is in the stack.
-  // They set the positionHash in the qPosHash to mark moves as
+  // They set bits in records looked up in qPosHash to mark moves as
   // "currently under evaluation."
   // This uses bits 1 & 2 in the qPositionInfo qPositionFlag.
   // MT NOTE:  depending on the posHash (& posInfo) for tagging which
@@ -176,8 +180,11 @@ class qMoveStack {
   // qMoveStacks from operating on one posHash.  We should implement
   // a data type as part of the qMoveStack for checking if moves are in
   // the stack.  ???
+  // ENCAPSULATION NOTE: The dependence on the posHash means these should
+  // probably be helper funcs defined outside the qMoveStack class. (???)
 
-  qPositionInfo *pushEval(qPositionInfo     *endPosInfo, // optimizer
+  qPositionInfo *pushEval(qPositionInfo     *startPosInfo, // optimizer
+                          qPositionInfo     *endPosInfo,   // optimizer
 			  qPositionInfoHash *posHash,  // reqd if posInfo==NULL
 			  qPlayer            whoMoved, //   From here down same
 			  qMove              move,     //   as pushMove
