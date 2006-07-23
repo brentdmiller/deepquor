@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
+// $Id: qsearcher.h,v 1.8 2006/07/23 04:29:56 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h 1
@@ -95,8 +95,19 @@ private:
 					gint32           depth,
 					// qPositionEvaluation *evalToBeat,
 					// ??? (carry both alpha & beta?)
+					guint32         &r_positionsEvaluated)
+  {
+    const qPositionEvaluation *posEval = iScanDeeper(pos,
+                                                     player2move,
+                                                     depth,
+                                                     r_positionsEvaluated);
+    computationTree.setNodeEval(currentTreeNode, posEval);
+    return posEval;
+  };
+  const qPositionEvaluation *iScanDeeper(const qPosition *pos,
+					qPlayer          player2move,
+					gint32           depth,
 					guint32         &r_positionsEvaluated);
-
 };
 
 
