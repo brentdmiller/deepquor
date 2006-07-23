@@ -5,13 +5,14 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.4 2006/07/18 06:55:33 bmiller Exp $
+// $Id: qcomptree.h,v 1.5 2006/07/23 04:29:56 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
 
 
 #include <vector>
+#include <deque>
 #include "qtypes.h"
 #include "qposinfo.h"
 #include "parameters.h"
@@ -52,7 +53,7 @@ public:
      qPlayer   playerMoving;
   */
   qComputationTreeNodeId              parentNodeIdx;
-  std::vector<qComputationTreeNodeId> childNodes;
+  std::deque<qComputationTreeNodeId>  childNodes;
   qComputationTreeNodeId              childWithBestEvalScore;
 
   // And now the saved state used to accelerate things...
@@ -109,7 +110,6 @@ class qComputationTree {
   qComputationTree::qComputationTree();
   qComputationTree::~qComputationTree();
 
-
   // Sets all nodes to uninitialized
   void initializeTree();
 
@@ -136,7 +136,8 @@ class qComputationTree {
   qPositionInfo *getNodePosInfo(qComputationTreeNodeId node) const;
   void setNodePosInfo(qComputationTreeNodeId node, qPositionInfo *posInfo);
 
-  // Note: using setEval alters the order of the parent node's child list 
+  // Note: using setEval alters the order of the parent node's child list,
+  // and can cause the parent node's TopScoringChild to change.
   void setNodeEval(qComputationTreeNodeId     node,
 		   const qPositionEvaluation *eval);
   const qPositionEvaluation *getNodeEval(qComputationTreeNodeId node) const;
@@ -148,13 +149,15 @@ class qComputationTree {
   // Maybe replace these with simple arrays, if we're sure we won't need to
   // grow them (or if we can get by without the graph)
   std::vector<qComputationNode> nodeHeap;
+
+  qComputationTreeNodeId nodeNum; // lowest free node
+  qComputationTreeNodeId maxNode; // highest existing node; alloc more when used
+
   inline void growNodeHeap()
     { nodeHeap.resize(COMPTREE_GROW_SIZE + nodeHeap.size());
       maxNode = nodeHeap.size() - 1;
     };
-
-  qComputationTreeNodeId nodeNum; // lowest free node
-  qComputationTreeNodeId maxNode; // highest existing node; alloc more when used
+  void qComputationTree::resetBestChild(qComputationNode &n);
 };
 
 extern const qComputationNode emptyNode;
