@@ -9,7 +9,7 @@
 #include "qposition.h"
 #include <deque>
 
-IDSTR("$Id: qdijkstra.cpp,v 1.3 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: qdijkstra.cpp,v 1.4 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -19,6 +19,10 @@ int qDijkstra
 {
   g_assert(arg &&
 	   arg->pos &&
+	   (arg->pos->numWhiteWallsLeft() <= 0x0f) &&
+	   (arg->pos->numBlackWallsLeft() <= 0x0f) &&
+	   (arg->pos->getWhitePawn().squareNum <= qSquare::maxSquareNum) &&
+	   (arg->pos->getBlackPawn().squareNum <= qSquare::maxSquareNum) &&
 	   (arg->player.isWhite() || arg->player.isBlack()));
 
   if (arg->pos->isWon(arg->player)) {
@@ -36,7 +40,7 @@ int qDijkstra
    */
 
   qSquare currSquare = arg->pos->getPawn(arg->player);
-  qSquare tmpSquare(0);
+  qSquare tmpSquare(qSquare::undefSquareNum);
   frontier.push_back(currSquare);
   dist[currSquare.squareNum] = 1;
   int curr_dist;
@@ -51,7 +55,7 @@ int qDijkstra
 	if (!arg->pos->isBlockedByWall(currSquare, UP) &&
 	    !dist[((tmpSquare=currSquare).applyDirection(UP)).squareNum])
 	  {
-	    if (arg->pos->isWhiteWon()) {
+	    if (tmpSquare.isWhiteWon()) {
 	      arg->dist[rval++] = curr_dist - 1;
 	      if (!arg->getAllRoutes) 
 		return rval;
@@ -79,7 +83,7 @@ int qDijkstra
     }
   else
     { // player is black; only check for completion after DOWN moves
-      while (!frontier.empty()) {
+      while (!(frontier.empty())) {
 	currSquare = frontier.front();
         frontier.pop_front();
 	curr_dist = dist[currSquare.squareNum]+1;
@@ -87,7 +91,7 @@ int qDijkstra
 	if (!arg->pos->isBlockedByWall(currSquare, DOWN) &&
 	    !dist[((tmpSquare=currSquare).applyDirection(DOWN)).squareNum])
 	  {
-	    if (arg->pos->isBlackWon()) {
+	    if (tmpSquare.isBlackWon()) {
 	      arg->dist[rval++] = curr_dist - 1;
 	      if (!arg->getAllRoutes) 
 		return rval;
