@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
+// $Id: qtypes.h,v 1.8 2006/07/23 04:29:56 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -39,6 +39,12 @@ typedef uint32_t guint32;
 #define NULL 0
 #endif
 
+
+#ifdef DEBUG
+#define DEBUG_CODE(x) x
+#else
+#define DEBUG_CODE(x)
+#endif
 
 
 /* Basic global types and values for Brent's quoridor prog */
@@ -79,7 +85,7 @@ class qSquare {
 
   qSquare(guint8 squareId)
     {
-      assert(squareId <= maxSquareNum);
+      assert((squareId <= maxSquareNum) || (squareId==undefSquareNum));
       squareNum = squareId;
     }
 
@@ -97,8 +103,17 @@ class qSquare {
     }
   */
 
+  // Modifies current instance
   qSquare applyDirection(qDirection vector)
-    { return qSquare(squareNum + vector); }
+    { squareNum += vector; g_assert(squareNum<=maxSquareNum); return *this; }
+
+  // Returns a new instance on the stack
+  qSquare newSquare(qDirection vector) const
+    { g_assert(squareNum+vector <= maxSquareNum); return qSquare(squareNum + vector); }
+
+
+  bool isWhiteWon() const { return ((y())==8); }
+  bool isBlackWon() const { return ((y())==0); }
 };
 
 /* Allow bool parameters to specify cols versus rows */
@@ -144,20 +159,24 @@ class qMove {
    *  (mv>>5) - indicates at which position within row/col to lay wall
    */
   guint8 move;
+  guint8     encodeDir(qDirection d) const
+    { return ((d + qSquare::maxSquareNum)<<1);};
+  qDirection decodeDir(guint8 mv)    const
+    { return ((mv>>1) - qSquare::maxSquareNum);};
 
  public:
   // qMove -  Constructor for a wall placement
   qMove(bool RowOrCol, guint8 rowColNo, guint8 posNo)
-    { move = (posNo<<5)|(rowColNo<<3)|(RowOrCol); };
+    { move = (posNo<<5)|(rowColNo<<2)|(RowOrCol?2:0)|1; };
 
   // Constructor for a pawn move
   qMove(gint8 deltaX, gint8 deltaY)
     {
       assert((-3 < deltaX) && (deltaX < 3) && (-3 < deltaY) && (deltaY < 3));
-      move = (deltaX+9*deltaY)<<1;
+      move = encodeDir(deltaX+9*deltaY);
     };
 
-  qMove(qDirection d)    { move = (d<<1);     };
+  qMove(qDirection d)    { move = encodeDir(d); };
 
   // Constructor using a previously encoded move
   qMove(guint8 mv) { move = mv; };
@@ -175,7 +194,7 @@ class qMove {
   // Members for accessing pawn moves
   inline bool     isPawnMove()  const { return !(move&0x01);             };
   inline qDirection pawnMoveDirection()
-                                const { return  (((qDirection)move)>>1); };
+                                const { return  decodeDir(move); };
 
   // Gets the binary representation of a move (in one byte)
   inline guint8 getEncoding(void) const { return move; };
