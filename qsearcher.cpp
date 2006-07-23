@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.9 2006/07/18 18:58:09 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.10 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -60,7 +60,7 @@ public:
     return compTree->getNodeEval(childId);
   };
   bool atEnd() {
-    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTreeNode_invalid) ? FALSE : TRUE;
+    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTreeNode_invalid) ? TRUE : FALSE;
   };
 };
 
@@ -234,9 +234,8 @@ qSearcher::iSearch
     // Find current top-scoring move
     qPositionEvaluation const *bestEval;
     {
-      qComputationTreeNodeId bestPosId;
-
-      bestPosId = computationTree.getTopScoringChild(currentTreeNode);
+      qComputationTreeNodeId bestPosId =
+        computationTree.getTopScoringChild(currentTreeNode);
 
       bestMove = computationTree.getNodePrecedingMove(bestPosId);
       bestEval = computationTree.getNodeEval(bestPosId);
@@ -358,8 +357,8 @@ qSearcher::iSearch
 }
 
 /* scanDeeper
- */  
-const qPositionEvaluation *qSearcher::scanDeeper
+ */
+const qPositionEvaluation *qSearcher::iScanDeeper
 (const qPosition *pos,
  qPlayer          player2move,
  gint32           depth,
@@ -388,21 +387,22 @@ const qPositionEvaluation *qSearcher::scanDeeper
   else
     {
       // Check if this position is already in the move stack
-      if (moveStack.isInEvalStack(posInfo, player2move))
+      if (moveStack.isInEvalStack(posInfo, player2move)) {
 	return positionEval_even;
+      }
     }
 
   // If we're at the end of a search, return the position's existing
   // evalutation (or make one if necessary)
   if (depth == 0) {
-    if (!posInfo->evalExists(player2move)) {
-      // Check return val???
-      ratePositionByComputation(*pos, player2move, posInfo);
-      // Let the caller do this:
-      // computationTree.setNodeEval(currentTreeNode, posInfo->get(player2mv));
+    if (posInfo->evalExists(player2move))
+      return posInfo->get(player2move);
+    else {
+      qPositionEvaluation const *rval =
+	ratePositionByComputation(*pos, player2move, posInfo);
       ++r_positionsEvaluated;
+      return rval;
     }
-    return posInfo->get(player2move);;
   }
 
   // If we don't have an evaluation for the current position
@@ -469,15 +469,14 @@ const qPositionEvaluation *qSearcher::scanDeeper
 
       for (move_idx=0;
 	   next_position_id = computationTree.getNthChild(currentTreeNode,
-							   move_idx);
+							  move_idx);
 	   move_idx++) {
 	qMove possible_move = computationTree.getNodePrecedingMove(next_position_id);
 
-	moveStack.pushEval(posInfo, &posHash, player2move, possible_move, NULL);
+	moveStack.pushEval(posInfo, computationTree.getNodePosInfo(next_position_id), &posHash, player2move, possible_move, NULL);
 	currentTreeNode = next_position_id;
-	scanDeeper(moveStack.getPos(), otherPlayer, depth++, childPositionsComputed);
+	scanDeeper(moveStack.getPos(), otherPlayer, depth+1, childPositionsComputed);
 	r_positionsEvaluated += childPositionsComputed;
-	depth -= childPositionsComputed;
 	currentTreeNode = computationTree.getNodeParent(currentTreeNode);
 	moveStack.popEval();
       }
@@ -559,6 +558,11 @@ const qPositionEvaluation *qSearcher::scanDeeper
 	g_assert(bestMoveId); // How'd we get in a position with no moves?
 
 	bestEval = computationTree.getNodeEval(bestMoveId);
+
+	// Skip trying to refine the position in these cases
+	if ((bestEval->score==qScore_won) || (bestEval->score==qScore_lost))
+	  break;
+
 	guint16 maxComplexity = bestEval->complexity;
 	minScore = (qScore_lost + bestEval->complexity >= bestEval->score) ?
 	  qScore_lost : (bestEval->score - bestEval->complexity);
@@ -588,6 +592,13 @@ const qPositionEvaluation *qSearcher::scanDeeper
 	  }
 	g_assert(n>=1);  // We should always get past at least the best move
 
+	// Avoid refining if it's impossible
+	if (maxComplexity == 0) // Can happen if all moves repeat positions
+	  {
+	    g_assert(bestEval->score == 0); // We already aborted won/lost positions.  Only draws should be left
+	    break;
+	  }
+
 	// Devote a depth effort proportional to the avail. depth divided
 	// by the number of contending moves.
 	gint16 scan_depth = depth / n;
@@ -599,9 +610,17 @@ const qPositionEvaluation *qSearcher::scanDeeper
 #else
 #ERROR(MIN_POSITIONS_EXAMINED_PER_PLY must be at least 1)
 #endif
+	// TODO:  fold the "mark under evaluation" functionality of qMoveStack
+	// into the qComputationTree class (and remove it from qMoveStack).
+	// Also, maybe store the qposition in the qComputationTree, so we can
+        // avoid reappling moves to the position as we walk up and down the
+	// tree.  This will allow breaking the PossibleWallMove functinality
+        // into an independent class that can be shared by both a qMoveStack
+	// and a qComputationTree.  When all that's done, qMoveStacks won't
+	// need to be used at all during evaluation.  (!!!)
 	qMove possible_move =
 	  computationTree.getNodePrecedingMove(contendingMoveId);
-	moveStack.pushEval(posInfo, NULL, player2move, possible_move, NULL);
+	moveStack.pushEval(posInfo, computationTree.getNodePosInfo(contendingMoveId), &posHash, player2move, possible_move, NULL);
 	currentTreeNode = contendingMoveId;
 	scanDeeper(moveStack.getPos(), otherPlayer, scan_depth, childPositionsComputed);
 	r_positionsEvaluated += childPositionsComputed;
