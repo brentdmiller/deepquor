@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.9 2006/07/23 04:29:56 bmiller Exp $
+// $Id: qposition.h,v 1.10 2006/07/23 05:29:38 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -17,10 +17,10 @@
  * a tight array!!!
  */
 #ifdef __GNUC__
-//??? #define PACK_DECL(decl) decl __attribute__ ((__packed__))
-#define PACK_DECL(decl) decl
+#define PACK_DECL(decl) decl __attribute__ ((__packed__))
 #else
 #error  Error_do_not_know_how_to_force_packed_structs_on_your_compilier
+#define PACK_DECL(decl) decl /* Use this as a last resort */
 #endif
 class qPosition {
  public:
