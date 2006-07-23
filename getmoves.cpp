@@ -10,7 +10,7 @@
 #include "qmovstack.h"
 #include "qdijkstra.h"
 
-IDSTR("$Id: getmoves.cpp,v 1.4 2006/07/15 05:16:38 bmiller Exp $");
+IDSTR("$Id: getmoves.cpp,v 1.5 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -87,7 +87,7 @@ qMoveList *getPossiblePawnMoves
     if (pos->isBlockedByWall(myPawn, dir))
       continue;
 
-    dest = myPawn.applyDirection(dir);
+    dest = myPawn.newSquare(dir);
 
     if (dest.squareNum != otherPawn.squareNum)
       {
