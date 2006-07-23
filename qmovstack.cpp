@@ -8,7 +8,7 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.9 2006/07/18 06:55:33 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.10 2006/07/23 04:29:56 bmiller Exp $");
 
 
 /****/
@@ -19,12 +19,13 @@ IDSTR("$Id: qmovstack.cpp,v 1.9 2006/07/18 06:55:33 bmiller Exp $");
 
 qMoveStack::qMoveStack
 (const qPosition *pos, qPlayer player2move)
+  :sp(0)
 {
-  sp = 0;
   moveStack[sp].resultingPos = *pos;
   // moveStack[sp].move = qMove();  Unnecessary
   moveStack[sp].wallMovesBlockedByMove.clearList();
   moveStack[sp].playerMoved = qPlayer(player2move.getOtherPlayerId());
+  moveStack[sp].posInfo = NULL;
   initWallMoveTable();
 }
 
@@ -62,20 +63,21 @@ void qMoveStack::initWallMoveTable()
 
 	  thisMove->move     = mv;
 	  thisMove->possible = pos.canPutWall(rowOrCol, rowColNo, posNo);
-	  thisMove->eliminates.clearList();
+	  thisMove->eliminates.clear();
 	  if (thisMove->possible)
 	    possibleWallMoves.push(thisMove);
 	  else
 	    thisMove->next = thisMove->prev = NULL;
 	}
 
-  // 2nd pass: note for each possible move which future wall moves it blocks
-#define MAYBE_ELIMINATE(mv) if((mv)->possible){thisMove->eliminates.push(mv);}
+  // 2nd pass: for each possible move, note which future wall moves it blocks
+#define MAYBE_ELIMINATE(m) if((m)->possible){thisMove->eliminates.push_back(m);}
   for (thisMove=possibleWallMoves.getHead();
        thisMove;
        thisMove = thisMove->next)
     {
       mv = thisMove->move;
+      g_assert(mv.isWallMove());
 
       if (mv.wallPosition()>0)
 	MAYBE_ELIMINATE(&allWallMoveArry[qMove(mv.wallMoveIsRow(),
@@ -98,12 +100,13 @@ void qMoveStack::pushMove
 {
 #define ARRAYSIZE(ARR) (sizeof(ARR)/sizeof((ARR)[0]))
 
-  g_assert(sp < ARRAYSIZE(allWallMoveArry));
+  g_assert(sp < ARRAYSIZE(moveStack));
   qMoveStackFrame *frame = &moveStack[++sp];
 
   // Record the move
   frame->move = mv;
   frame->playerMoved = playerMoving;
+  frame->posInfo     = NULL;
 
   // Record the new position
   if (endPos)
@@ -114,7 +117,8 @@ void qMoveStack::pushMove
   if (mv.isPawnMove())
     frame->wallMovesBlockedByMove.clearList();
   else {
-    qWallMoveInfo *thisMove, *blockedMove, *next;
+    qWallMoveInfo *thisMove, *next;
+    list<qWallMoveInfo*>::iterator blockedMove;
 
     thisMove = &allWallMoveArry[mv.getEncoding()];
     g_assert(thisMove->possible == TRUE);
@@ -123,18 +127,18 @@ void qMoveStack::pushMove
 
     // Of course, remove the wall placement from possible moves
     thisMove->possible = FALSE;
+    possibleWallMoves.pop(thisMove);
     frame->wallMovesBlockedByMove.push(thisMove);
 
     // Remove any other wall move options that are now blocked
-    for (blockedMove=thisMove->eliminates.getHead();
-	 blockedMove;
-	 blockedMove = next)
+    for (blockedMove=thisMove->eliminates.begin();
+	 blockedMove != thisMove->eliminates.end();
+	 ++blockedMove)
     {
-      next = blockedMove->next; // Copy this cuz we mess with blockedMove
-      if (blockedMove->possible) {
-	blockedMove->possible = FALSE;
-	possibleWallMoves.pop(blockedMove);
-        frame->wallMovesBlockedByMove.push(blockedMove);
+      if ((*blockedMove)->possible) {
+	(*blockedMove)->possible = FALSE;
+	possibleWallMoves.pop(*blockedMove);
+        frame->wallMovesBlockedByMove.push(*blockedMove);
       }
     }
   }
@@ -165,15 +169,42 @@ void qMoveStack::popMove
  * class qWallMoveInfoList *
  ***************************/
 qWallMoveInfoList::qWallMoveInfoList
-(void)
+(void):
+  head(NULL), tail(NULL)
 {
-  head = tail = NULL;
+  DEBUG_CODE(numElts = 0;)
   return;
 }
+
+#ifdef DEBUG
+void qWallMoveInfoList::verifyEltCount()
+{ // Make sure this mv isn't already in the info list (which will corrupt us)
+  qWallMoveInfo *tmp = head;
+  int countedElts = 0;
+  while (tmp) {
+    tmp = tmp->next;
+    countedElts++;
+  }
+  g_assert(countedElts == numElts);
+}
+#endif
+
 
 void qWallMoveInfoList::push
 (qWallMoveInfo *mv)
 {
+#ifdef DEBUG
+  { // Make sure this mv isn't already in the info list (which will corrupt us)
+    qWallMoveInfo *tmp = head;
+    while (tmp) {
+      g_assert(tmp!=mv);
+      tmp = tmp->next;
+    }
+  }
+#endif
+
+  DEBUG_CODE(verifyEltCount();)
+
   mv->prev = NULL;
   mv->next = head;
   if (head) {
@@ -182,10 +213,27 @@ void qWallMoveInfoList::push
     tail = mv;
   }
   head = mv;
+
+  DEBUG_CODE(++numElts;)
+  DEBUG_CODE(verifyEltCount();) //Make sure we didn't break anything
 }
 void qWallMoveInfoList::pop
 (qWallMoveInfo *mv)
 {
+#ifdef DEBUG
+  { // Make sure the mv is actually in the list
+    qWallMoveInfo *tmp = head;
+    while (tmp) {
+      if (tmp==mv)
+	break;
+      tmp = tmp->next;
+    }
+    g_assert(tmp);
+  }
+#endif
+
+  DEBUG_CODE(verifyEltCount();)
+
   if (mv->next) {
     mv->next->prev = mv->prev;
   } else {
@@ -196,17 +244,26 @@ void qWallMoveInfoList::pop
   } else {
     head = mv->next;
   }
+
+  DEBUG_CODE(--numElts;)
+  DEBUG_CODE(verifyEltCount();) //Make sure we didn't break anything
 }
 qWallMoveInfo *qWallMoveInfoList::pop
 (void)
 {
+  DEBUG_CODE(verifyEltCount();)
+
   qWallMoveInfo *rval=head;
   if (head) {
     head = head->next;
-    head->prev = NULL;
-    if (!head)
+    if (head)
+      head->prev = NULL;
+    else
       tail = NULL;
   }
+
+  DEBUG_CODE(if (rval) --numElts;)
+  DEBUG_CODE(verifyEltCount();) //Make sure we didn't break anything
   return rval;
 };
 
@@ -250,8 +307,9 @@ inline static void clearMoveInEval
 
 
 qPositionInfo *qMoveStack::pushEval
-(qPositionInfo     *endPosInfo, // optimizer
- qPositionInfoHash *posHash,  // reqd if posInfo==NULL
+(qPositionInfo     *startPosInfo, // optimizer
+ qPositionInfo     *endPosInfo,   // optimizer
+ qPositionInfoHash *posHash,  // reqd if endPosInfo==NULL or startPosInfo==NULL
  qPlayer            whoMoved, //   From here down same
  qMove              move,     //   as pushMove()
  qPosition         *endPos)
@@ -260,11 +318,15 @@ qPositionInfo *qMoveStack::pushEval
   if (!endPosInfo && !posHash)
     return NULL;
 
-  g_assert(whoMoved.playerId() == this->getPlayer2Move().playerId);
+  g_assert(whoMoved.getPlayerId() == this->getPlayer2Move().getPlayerId());
 
   // 1. Mark position as under evaluation in posInfo w/setMoveInEval()
-  if (!this->moveStack[sp].posInfo)
-    this->moveStack[sp].posInfo = posHash->getOrAddElt(this->getPos());
+  if (!this->moveStack[sp].posInfo) {
+    if (startPosInfo)
+      this->moveStack[sp].posInfo = startPosInfo;
+    else
+      this->moveStack[sp].posInfo = posHash->getOrAddElt(this->getPos());
+  }
   g_assert(this->moveStack[sp].posInfo);
   setMoveInEval(this->moveStack[sp].posInfo, this->moveStack[sp].playerMoved);
 
