@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.8 2006/07/15 05:16:38 bmiller Exp $
+// $Id: qposition.h,v 1.9 2006/07/23 04:29:56 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -17,7 +17,8 @@
  * a tight array!!!
  */
 #ifdef __GNUC__
-#define PACK_DECL(decl) decl __attribute__ ((__packed__))
+//??? #define PACK_DECL(decl) decl __attribute__ ((__packed__))
+#define PACK_DECL(decl) decl
 #else
 #error  Error_do_not_know_how_to_force_packed_structs_on_your_compilier
 #endif
@@ -51,7 +52,7 @@ class qPosition {
   inline bool isLost(qPlayer p) const
     { return((p.isWhite() ? (black_pawn_pos.y()==0) : white_pawn_pos.y()==8)); }
   inline bool isWhiteWon() const { return (white_pawn_pos.y()==8); }
-  inline bool isBlackWon() const { return (black_pawn_pos.y()==8); }
+  inline bool isBlackWon() const { return (black_pawn_pos.y()==0); }
 
   // Note that we rely on default memberwise copy for qPosition assignment a=b:
   // qPosition(qPosition copy) :
