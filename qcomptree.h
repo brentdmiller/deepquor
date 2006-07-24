@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.5 2006/07/23 04:29:56 bmiller Exp $
+// $Id: qcomptree.h,v 1.6 2006/07/24 03:34:45 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
@@ -54,7 +54,9 @@ public:
   */
   qComputationTreeNodeId              parentNodeIdx;
   std::deque<qComputationTreeNodeId>  childNodes;
-  qComputationTreeNodeId              childWithBestEvalScore;
+
+  // Note that the following is actually the lowest opponent eval
+  qComputationTreeNodeId              childWithBestEval;
 
   // And now the saved state used to accelerate things...
   qPositionInfo           *posInfo;
@@ -63,7 +65,7 @@ public:
   qComputationNode::qComputationNode()
   :parentNodeIdx(qComputationTreeNode_invalid),
    childNodes(0),
-   childWithBestEvalScore(0),
+   childWithBestEval(0),
    posInfo(NULL)
     {
        this->mv = moveNull;
@@ -127,9 +129,13 @@ class qComputationTree {
 				      const qPositionEvaluation *eval);
 
   // Returns 0 if no such child;
-  // Children are ordered according to eval.score + eval.complexity
+  // Because we usually want to find the move yielding the worst possible
+  // eval for our opponent, children are ordered according to
+  // -eval.score - eval.complexity
   qComputationTreeNodeId getNthChild(qComputationTreeNodeId node, guint8 n) const;
-  qComputationTreeNodeId getTopScoringChild(qComputationTreeNodeId node) const;
+
+  // Returns the childNode with the lowest eval.score
+  qComputationTreeNodeId getBestScoringChild(qComputationTreeNodeId node) const;
 
   qComputationTreeNodeId getNodeParent(qComputationTreeNodeId node) const;
 
@@ -137,7 +143,7 @@ class qComputationTree {
   void setNodePosInfo(qComputationTreeNodeId node, qPositionInfo *posInfo);
 
   // Note: using setEval alters the order of the parent node's child list,
-  // and can cause the parent node's TopScoringChild to change.
+  // and can cause the parent node's BestScoringChild to change.
   void setNodeEval(qComputationTreeNodeId     node,
 		   const qPositionEvaluation *eval);
   const qPositionEvaluation *getNodeEval(qComputationTreeNodeId node) const;
