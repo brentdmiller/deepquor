@@ -11,13 +11,22 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.11 2006/07/24 03:34:45 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.12 2006/07/24 04:11:31 bmiller Exp $");
 
 
 /****/
 
 // Convenience utility
-guint32 milliseconds_since2000(void);
+class milliSecondTimer {
+public:
+  milliSecondTimer();
+  bool    reset();      // Returns TRUE (success) or FALSE (fail)
+  guint32 getElapsed(); // Returns num millicecs since last reset
+
+private:
+  struct timeval startTime;
+};
+
 
 // Used by qPositionInfoHash
 void my_posHashEltInitFunc
@@ -173,18 +182,13 @@ qSearcher::iSearch
   gint8 current_depth = 0;
   guint32 positionsEvaluated = 0;
   qMove   bestMove;
-  guint32 stop_time;     // an "alarm" for when to stop & check conditions
-  guint32 current_time;
+  milliSecondTimer msTimer;
 
   // Figure out how long to think
-  {
-    gint32 think_time = suggested_time;
-    current_time = milliseconds_since2000();
-
-    if ((!think_time) || (max_time < think_time))
-      think_time = max_time;
-    stop_time = current_time + think_time;
-  }
+  msTimer.reset();
+  guint32 stop_time = suggested_time; // "alarm" when to stop & check conditions
+  if ((!stop_time) || (max_time < stop_time))
+    stop_time = max_time;
 
   computationTree.initializeTree();
   currentTreeNode = computationTree.getRootNode();
@@ -216,10 +220,10 @@ qSearcher::iSearch
     // If hard limit has expired, return best chosen move
     // If soft limit has expired, loosen criteria & continue
     {
-      current_time = milliseconds_since2000();
+      guint32 current_time = msTimer.getElapsed();
 
       if (current_time >= stop_time) {
-	stop_time = current_time + max_time;
+	stop_time = max_time;
 
 	// If we're beyond the hard max time, just return
 	if (current_time >= stop_time)
@@ -645,18 +649,33 @@ const qPositionEvaluation *qSearcher::iScanDeeper
   return posInfo->get(player2move);
 }
 
-/* Secs since a fixed point in time near 1/1/2000 */
-guint32 milliseconds_since2000()
+
+/**************************
+ * milliSecondTimer class *
+ **************************/
+milliSecondTimer::milliSecondTimer()
+{ 
+  startTime.tv_sec  = 0;
+  startTime.tv_usec = 0;
+}
+
+bool milliSecondTimer::reset()
+{
+  if (gettimeofday(&startTime, NULL))
+    return FALSE;
+
+  return TRUE;
+}
+
+guint32 milliSecondTimer::getElapsed()
 {
   struct timeval t;
-
   if (gettimeofday(&t, NULL))
     return 0;
 
-#define SECS_FROM_EPOCH_TO_2000 946706400
-
-  return 1000*(static_cast<guint32>(t.tv_sec) - SECS_FROM_EPOCH_TO_2000) + (static_cast<guint32>(t.tv_usec)/1000);
+  return 1000*static_cast<guint32>(t.tv_sec - startTime.tv_sec) + (static_cast<gint32>(t.tv_usec)- startTime.tv_usec)/1000;
 }
+
 
 #if 0
 // This code was originally when I was going to have a bg thinker
