@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.10 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.11 2006/07/24 03:34:45 bmiller Exp $");
 
 
 /****/
@@ -30,6 +30,8 @@ void my_posHashEltInitFunc
 }
 
 /* class qCompTreeChildEdgeEvalIterator - used internally
+ * Iterates through qPositionEvaluation for opponent's positions resulting
+ * from all possible moves.
  */
 class qCompTreeChildEdgeEvalIterator:public qEvalIterator {
 private:
@@ -235,22 +237,22 @@ qSearcher::iSearch
     qPositionEvaluation const *bestEval;
     {
       qComputationTreeNodeId bestPosId =
-        computationTree.getTopScoringChild(currentTreeNode);
+        computationTree.getBestScoringChild(currentTreeNode);
 
       bestMove = computationTree.getNodePrecedingMove(bestPosId);
       bestEval = computationTree.getNodeEval(bestPosId);
     }
 
-    // 2. Is top move complexity 0 forced win?
+    // 2. Is top move complexity 0 forced loss for opponent?
     // Yes: make best move
-    if (bestEval->score == qScore_won) {
+    if (bestEval->score == qScore_lost) {
       return bestMove;
     }
 
-    // 3. Is top move complexity 0 forced loss?
+    // 3. Is our best option a win for opponent?
     // Yes: make move with most computations (if we have computations avail;
     // otherwise just make any move)
-    if (bestEval->score == qScore_lost) {
+    if (bestEval->score == qScore_won) {
 #if HAVE_NUM_COMPUTATIONS
       // Find move with most computations
       return move_with_most_computations;
@@ -271,13 +273,13 @@ qSearcher::iSearch
     // 6. Is complexity of all contending moves below some minimum threshold?
     //   Yes: return bestmove; not worth further evaluation
     {
-      gint16 minScore;
+      gint16 scoreThresh;
       qComputationTreeNodeId curPosId;
       qPositionEvaluation const *curEval;
       bool worthRefining = FALSE;
 
-      minScore = (qScore_lost + bestEval->complexity >= bestEval->score) ?
-	qScore_lost : (bestEval->score - bestEval->complexity);
+      scoreThresh = (qScore_won - bestEval->complexity <= bestEval->score) ?
+	qScore_won : (bestEval->score + bestEval->complexity);
 
       guint8 n = 0;
 
@@ -291,8 +293,8 @@ qSearcher::iSearch
 
 	    curEval = computationTree.getNodeEval(curPosId);
 
-	    if ((curEval->score + curEval->complexity <= minScore) &&
-		(curEval->score < qScore_won - curEval->complexity))
+	    if ((curEval->score - curEval->complexity >= scoreThresh) &&
+		(curEval->score > qScore_lost + curEval->complexity))
 	      break; // No more contendors
 
 	    if (curEval->complexity > slop) {
@@ -313,12 +315,11 @@ qSearcher::iSearch
       //   Yes: return bestMove
       //   No: Further evaluate best move (How do we implement this???)
       if (n <= 1) {
-	// If there's only one move left in contention, then this will
-	// give us a move out of the score range:
+	// Check if anything beyond move 0 is within striking range
 	curPosId = computationTree.getNthChild(currentTreeNode, 1);
 	curEval = computationTree.getNodeEval(curPosId);
-	if ((curEval->score + curEval->complexity <= minScore) &&
-	    (curEval->score < qScore_won - curEval->complexity))
+	if ((curEval->score - curEval->complexity >= scoreThresh) &&
+	    (curEval->score > qScore_lost + curEval->complexity))
 	  {
 	    // Not even child 1 is a contendor--there's only one (child 0).
 	    break;  // Break out and return a move
@@ -422,17 +423,6 @@ const qPositionEvaluation *qSearcher::iScanDeeper
       if (depth > 0) {
 	depth--;
 
-#if 0  /* Skip this for now; it breaks the depth counting mechanism */
-	// optimization:  we're into new territory, so most adjacent moves
-	// will also probably probably be new.  Do a 1-ply depth-first
-	// to get the evaluations ready.
-	if (depth > 0) {
-	  scanDeeper(pos, player2move, -1, NULL);
-	  // Don't bother to record the evaluation returned for the current
-	  // position...it'll get recorded by the caller when we evenutally
-	  // return.
-	}
-#endif
       }
     }
   else
@@ -452,6 +442,9 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	qMoveList possible_moves; // Initially empty
 	qMoveListIterator i;
 
+	// Maybe we don't need to verify what moves give legal positions.
+	// ratePositionByComputation does that for us (but is slightly
+	// more costly)
 	getPlayableMoves(pos, &moveStack, &possible_moves);
 
 	// Should we prune when doing brute force search???
@@ -494,10 +487,20 @@ const qPositionEvaluation *qSearcher::iScanDeeper
     // each possible move (so that we can compute score from neighbors).
     if (!computationTree.getNthChild(currentTreeNode, 0))
       {
+#if 0  /* Could we just do this??? */
+	// optimization:  we're into new territory, so most adjacent moves
+	// will also probably probably be new.  Do a 1-ply depth-first
+	// to get the evaluations ready.
+	if (depth > 0) {
+	  scanDeeper(pos, player2move, -1, childPositionsComputed);
+	  r_positionsEvaluated += childPositionsComputed;
+	}
+#endif
 	qMoveList possible_moves; // Initially empty
 	qMoveListIterator i;
 
 	getPlayableMoves(pos, &moveStack, &possible_moves);
+	g_assert(possible_moves.size() > 0);
 
 	// There should there be a way to bypass pruning for analysis mode
 	pruneUselessMoves(pos, &possible_moves);
@@ -551,10 +554,10 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	qComputationTreeNodeId contendingMoveId, bestMoveId, curMoveId;
 	qPositionEvaluation const *bestEval;
 	qPositionEvaluation const *curEval;
-	gint16 minScore;
+	gint16 scoreThresh;
 
 	bestMoveId = contendingMoveId =
-	  computationTree.getTopScoringChild(currentTreeNode);
+	  computationTree.getBestScoringChild(currentTreeNode);
 	g_assert(bestMoveId); // How'd we get in a position with no moves?
 
 	bestEval = computationTree.getNodeEval(bestMoveId);
@@ -564,8 +567,8 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	  break;
 
 	guint16 maxComplexity = bestEval->complexity;
-	minScore = (qScore_lost + bestEval->complexity >= bestEval->score) ?
-	  qScore_lost : (bestEval->score - bestEval->complexity);
+	scoreThresh = (qScore_won - bestEval->complexity <= bestEval->score) ?
+	  qScore_won : (bestEval->score + bestEval->complexity);
 
 	// Skim through contendors to pick the best one to refine,
 	guint8 n;
@@ -577,8 +580,8 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	      continue;
 
 	    curEval = computationTree.getNodeEval(curMoveId);
-	    if ((curEval->score + curEval->complexity <= minScore) &&
-		(curEval->score < qScore_won - curEval->complexity))
+	    if ((curEval->score - curEval->complexity >= scoreThresh) &&
+		(curEval->score > qScore_lost + curEval->complexity))
 	      break; // No more contendors--we've fallen below the threshold
 
 	    // Pick whichever contending move has highest complexity???
@@ -606,7 +609,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	// scan_depth cannot be 0 or we could loop forever.
 #if MIN_POSITIONS_EXAMINED_PER_PLY > 0
 	if (scan_depth < MIN_POSITIONS_EXAMINED_PER_PLY)
-	  scan_depth = MIN_POSITIONS_EXAMINED_PER_PLY;
+	  scan_depth = min(depth, MIN_POSITIONS_EXAMINED_PER_PLY);
 #else
 #ERROR(MIN_POSITIONS_EXAMINED_PER_PLY must be at least 1)
 #endif
@@ -630,7 +633,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 
 	// Now loop back and re-evaluate the current position's options
       }
-  } while (depth >= 0);
+  } while (depth > 0);
 
   // Now combine the scores we've found and return
   {
@@ -652,7 +655,7 @@ guint32 milliseconds_since2000()
 
 #define SECS_FROM_EPOCH_TO_2000 946706400
 
-  return 1000*(t.tv_sec - SECS_FROM_EPOCH_TO_2000) + (t.tv_usec/1000);
+  return 1000*(static_cast<guint32>(t.tv_sec) - SECS_FROM_EPOCH_TO_2000) + (static_cast<guint32>(t.tv_usec)/1000);
 }
 
 #if 0

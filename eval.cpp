@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.8 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.9 2006/07/24 03:34:45 bmiller Exp $");
 
 
 /****/
@@ -112,7 +112,8 @@ qPositionEvaluation const *ratePositionByComputation
 #ifdef HAVE_NUM_COMPUTATIONS
     posInfo->setComputations(player, 1).computations = 1;
 #endif
-    posInfo->setScore(player, qScore_PLY);
+    posInfo->setScore(player, qScore_PLY + 
+		      WALL_SCORE(pos.numWallsLeft(player), pos.numWallsLeft(player.otherPlayer())));
     posInfo->setComplexity(player,
       BASE_COMPLEXITY +
       WALL_COMPLEXITY(pos.numWallsLeft(player),
@@ -181,11 +182,7 @@ qPositionEvaluation const *ratePositionByComputation
   }
 
   {
-    gint16 tmp = qScore_TURN * (distance[player2move.getPlayerId()] -
-                             distance[opponent.getPlayerId()]) +
-      (player2move.isWhite() ?
-       WALL_SCORE(pos.numWhiteWallsLeft(), pos.numBlackWallsLeft()) :
-       WALL_SCORE(pos.numBlackWallsLeft(), pos.numWhiteWallsLeft()));
+    gint16 tmp = qScore_TURN * (distance[1] - distance[0]);
 
 #ifdef USE_FINISH_SPREAD_SCORE
     // Add in a factor for the spread in moves to all avail. end squares,
@@ -198,22 +195,22 @@ qPositionEvaluation const *ratePositionByComputation
     // Whatever factor is arrived at, the score should be decreased by
     // approximately half that factor, and the complexity increased by
     // the factor.
-    goal_line_spread_factor[player] =
-      numWallsLeft(opponent) ? spread[player] : 0;
-    goal_line_spread_factor[opponent] =
-      numWallsLeft(player) ? spread[opponent] : 0;
+    goal_line_spread_factor[0] =
+      numWallsLeft(qPlayer_black) ? spread[0] : 0;
+    goal_line_spread_factor[1] =
+      numWallsLeft(qPlayer_white) ? spread[1] : 0;
 
-    gint16 score_adjust =
-      (goal_line_spread_factor[player] - goal_line_spread_factor[opponent])/2;
+    gint16 score_adjust_white =
+      (goal_line_spread_factor[0] - goal_line_spread_factor[1])/2;
+    gint16 score_adjust_black =
+      (goal_line_spread_factor[1] - goal_line_spread_factor[0])/2;
     gint16 complexity_adjust =
-      goal_line_spread_factor[player] + goal_line_spread_factor[opponent];
+      goal_line_spread_factor[0] + goal_line_spread_factor[1];
 #else
-    gint16 score_adjust = 0;
-    gint16 complexity_adjust = 0;
+    const gint16 score_adjust_white = 0;
+    const gint16 score_adjust_black = 0;
+    const gint16 complexity_adjust = 0;
 #endif
-
-    tmp = tmp - score_adjust;
-
 
     // !!! This spread (modified according to # walls opponent has) should
     // be a large factor in the complexity of a position.  Other factors
@@ -222,36 +219,36 @@ qPositionEvaluation const *ratePositionByComputation
     // number of possible finishing squares(?)???
 
     // Store the scores for each player
-    if (distance[player2move.getPlayerId()] <= 1) {
-      //evaluation[player].score        = qScore_won;
-      //evaluation[player].complexity   = 0;
-      posInfo->setScore(player2move, qScore_won);
-      posInfo->setComplexity(player2move, 0);
+    if (distance[0] <= 1) {
+      //evaluation[0].score        = qScore_won;
+      //evaluation[0].complexity   = 0;
+      posInfo->setScore(qPlayer_white, qScore_won);
+      posInfo->setComplexity(qPlayer_white, 0);
 #ifdef HAVE_NUM_COMPUTATIONS
       //evaluation[player].computations = 1;
       posInfo->setComputations(player2move, 1);
 #endif
     } else {
-      posInfo->setScore(     player2move,
-                             posInfo->getScore(player2move) + tmp);
-      posInfo->setComplexity(player2move,
-                             posInfo->getComplexity(player2move) + complexity_adjust);
+      posInfo->setScore(     qPlayer_white,
+                             posInfo->getScore(qPlayer_white) + tmp);
+      posInfo->setComplexity(qPlayer_white,
+                             posInfo->getComplexity(qPlayer_white) + complexity_adjust);
     }
 
-    if (distance[opponent.getPlayerId()] <= 1) {
-      posInfo->setScore     (opponent, qScore_won);
-      posInfo->setComplexity(opponent, 0);
+    if (distance[1] <= 1) {
+      posInfo->setScore     (qPlayer_black, qScore_won);
+      posInfo->setComplexity(qPlayer_black, 0);
 #ifdef HAVE_NUM_COMPUTATIONS
-      posInfo->setComputations(opponent, 1);
+      posInfo->setComputations(qPlayer_black, 1);
 #endif
     } else {
-      posInfo->setScore     (opponent,
-                             posInfo->getScore(opponent) - tmp);
-      posInfo->setComplexity(player2move,
-                             posInfo->getComplexity(player2move) + complexity_adjust);
+      posInfo->setScore     (qPlayer_black,
+                             posInfo->getScore(qPlayer_black) - tmp);
+      posInfo->setComplexity(qPlayer_black,
+                             posInfo->getComplexity(qPlayer_black) + complexity_adjust);
     }
   }
-  return posInfo->get(player2move.getPlayerId());
+  return posInfo->get(player2move);
 }
 
 inline void coalesceScores(const qPositionEvaluation &bestEval,
@@ -260,8 +257,18 @@ inline void coalesceScores(const qPositionEvaluation &bestEval,
 {
   // This protocol needs major tweaking...it should take into account
   // things like who is winning for how much to weigh complexity, etc.
-  newEval.score += ((currEval.score+currEval.complexity) - max(currEval.score-currEval.complexity, bestEval.score-bestEval.complexity))/(1+2*currEval.complexity + bestEval.score - currEval.score);
-  newEval.complexity += (3*currEval.complexity) / (10 + bestEval.score  - currEval.score);
+  gint32 newVal =
+    newEval.score - (min(static_cast<gint32>(currEval.score)+currEval.complexity, static_cast<gint32>(bestEval.score)+bestEval.complexity) - (currEval.score-currEval.complexity)) / (1+2*currEval.complexity + currEval.score - bestEval.score);
+  if (newVal < qScore_lost)
+    newEval.score = qScore_lost;
+  else 
+    newEval.score = static_cast<gint16>(newVal);
+
+  newVal = newEval.complexity + (3*static_cast<gint32>(currEval.complexity)) / (10 + static_cast<gint32>(currEval.score) - bestEval.score);
+  if (newVal > qComplexity_max)
+    newEval.score = qComplexity_max;
+  else 
+    newEval.score = static_cast<guint16>(newVal);
 }
 
 qPositionInfo    *ratePositionFromNeighbors
@@ -304,8 +311,8 @@ qPositionInfo    *ratePositionFromNeighbors
      return posInfo;
    }
   
-  // 1. Find the best-scoring move
-  // bestMove is always at the front of the list
+  // 1. Find move that gives opponent worst evaluation
+  // Keep bestMove always at the front of the list
   const qPositionEvaluation *bestMove, *currMove;
   bestMove = evalItor->val();
   scoreList.push_front(bestMove), evalItor->next();
@@ -317,7 +324,7 @@ qPositionInfo    *ratePositionFromNeighbors
       // Is score alone the way to find the best move?  We should probably
       // Take complexity and who is winning into account.  Especially because
       // a complexity-zero win is always better than a non-zero complexity
-      if (currMove->score > bestMove->score) {
+      if (currMove->score < bestMove->score) {
         bestMove = currMove;
         scoreList.push_front(currMove);
       } else {
@@ -329,7 +336,12 @@ qPositionInfo    *ratePositionFromNeighbors
   //    Take into accont minmax of last two plies???
   *newEval = *bestMove;
 
-  // If opponent has a won position, we already know it's lost for us.
+  // If we have a winning move, we're done (do this comparison in above loop???)
+  if (bestMove->score == qScore_lost) {
+    newEval->score = qScore_won;
+    return posInfo;
+  }
+  // If the best we could do was losing, then forget it; we've lost
   if (bestMove->score == qScore_won) {
     newEval->score = qScore_lost;
     return posInfo;
@@ -339,10 +351,10 @@ qPositionInfo    *ratePositionFromNeighbors
   while(!scoreList.empty()) {
     currMove = scoreList.back();
     scoreList.pop_back();
-    if (currMove->score == qScore_lost)
-      break; // This sure isn't going to improve the bestMove
-    if ((currMove->score + currMove->complexity) <
-        (bestMove->score - bestMove->complexity))
+    if (currMove->score == qScore_won)
+      break; // This sure isn't going to improve things for us
+    if ((currMove->score - currMove->complexity) <
+        (bestMove->score + bestMove->complexity))
       continue;
 
     coalesceScores(*bestMove, *currMove, *newEval);
