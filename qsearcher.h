@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.8 2006/07/23 04:29:56 bmiller Exp $
+// $Id: qsearcher.h,v 1.9 2006/07/24 03:34:45 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h 1
@@ -89,6 +89,7 @@ private:
    *   this number should probably become (maybe starting at 200 and going
    *   up to 300 or 400(?) eventually, as we begin to evaluate
    *   positions with larger number of contibuting computations.
+   * Returns evaluation for the position it was called with.
    */
   const qPositionEvaluation *scanDeeper(const qPosition *pos,
 					qPlayer          player2move,
@@ -151,6 +152,7 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
   qPositionInfoHash* posHash;
   qPosition          pos;
   qPlayer            player;
+  qPlayer            opponent;
 
  public:
   // Constructor:  note that whoseEval is who's eval we get--opposite of
@@ -160,14 +162,15 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
 			   qPlayer            whoseEval,
 			   qPositionInfoHash* evalHash)
   // Must initialize the qPosition "pos" to avoid warnings
-  :pos(parentPos)
+  :pos(parentPos),
+   player(whoseEval),
+   opponent(whoseEval.getOtherPlayerId())
   {
     container = parentContainer;
     itor      = container->begin();
     end       = container->end();
     posHash   = evalHash;
     // pos       = *parentPos; Defined in initialization (see decl above)
-    player    = whoseEval;
   };
 
   ~qEvalItorFromMvContainer() {;};
@@ -180,11 +183,11 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
     if (itor == end)
       return NULL;
     {
-      qPositionInfo  info;
+      qPositionInfo *info;
       qPosition newPos = pos;
       newPos.applyMove(player, *itor);
-      info = *(posHash->getOrAddElt(&newPos));
-      return static_cast<qPositionEvaluation const*>(info.get(player));
+      info = posHash->getOrAddElt(&newPos);
+      return static_cast<qPositionEvaluation const*>(info->get(opponent));
     }
   };
   bool atEnd() {
@@ -193,9 +196,9 @@ template <class C> class qEvalItorFromMvContainer:public qEvalIterator
 };
 
 /* Calculate the score for a position by examining the existing scores of
- * all possible moves from this position.  If all possible moves are already
- * known, us the version of ratePositionFromNeighbors() that takes an
- * iterator argument (below).
+ * all possible moves from this position.  If a list of evals for all
+ * possible moves is available, use the version of ratePositionFromNeighbors()
+ * that takes an iterator argument (below).
  */
 qPositionInfo *ratePositionFromNeighbors
 (const qPosition   *pos,
@@ -208,6 +211,6 @@ qPositionInfo    *ratePositionFromNeighbors
 (const qPosition *pos,
  qPlayer          player2move,
  qPositionInfo   *posInfo,
- qEvalIterator   *evalItor);
+ qEvalIterator   *opponentMoveScores);
 
 #endif // INCLUDE_searcher_h
