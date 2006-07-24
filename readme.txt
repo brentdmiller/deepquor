@@ -74,9 +74,6 @@ The larger data structures and interfaces are as follows:
 
 Perhaps search.cpp & eval.cpp should be combined into a moveSearcher object.
 
-TODO:
-1. Turn on USE_FINISH_SPREAD_SCORE in parameters.h  It should be used.
-
 
 
 DATA TYPES LISTED BY SOURCE FILE, AND THEIR DEPENDENCIES
@@ -176,3 +173,17 @@ qsearcher.h
 		(qEvalIterator) = self
 		
 		
+TODO:
+1. Improve coalesceScores() in eval.cpp
+2. Turn on USE_FINISH_SPREAD_SCORE in parameters.h  It should be used.
+3. Try turning on HAVE_NUM_COMPUTATIONS
+4. Evaluate uses of deque and see if any can/should be replaced with list.
+   deque has contant random-access (like vector).  A list is a doubly-linked
+   list, which is what I really neede most places that I used deque.
+
+OPTIMIZATIONS:
+5. scanDeeper (depth <0 and maybe >0 also) walks nodes, eventually calling
+   scanDeeper(depth==0) for leaf nodes.  It disregards the rvals of these
+   leaf nodes, and then calls reatePositionFromNeighbors.  Perhaps it could
+   get the rating directly from the rvals of previous calls.
+
