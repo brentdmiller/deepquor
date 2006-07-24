@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.10 2006/07/23 05:29:38 bmiller Exp $
+// $Id: qposition.h,v 1.11 2006/07/24 03:34:45 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -17,7 +17,8 @@
  * a tight array!!!
  */
 #ifdef __GNUC__
-#define PACK_DECL(decl) decl __attribute__ ((__packed__))
+//#define PACK_DECL(decl) decl __attribute__ ((__packed__))
+#define PACK_DECL(decl) decl /* Use this as a last resort */
 #else
 #error  Error_do_not_know_how_to_force_packed_structs_on_your_compilier
 #define PACK_DECL(decl) decl /* Use this as a last resort */
@@ -75,13 +76,13 @@ class qPosition {
     {
       switch(dir) {
       case UP:
-	return( (y>=8) ? TRUE : (row_walls[y] & (x ? (3<<(x-1)) : 1) ));
+	return( (y>=8) ? TRUE : (row_walls[y]   & (x ? (3<<(x-1)) : 1) ));
       case DOWN:
-	return( (y==0) ? TRUE : (row_walls[y] & (x ? (3<<(x-1)) : 1) ));
+	return( (y==0) ? TRUE : (row_walls[y-1] & (x ? (3<<(x-1)) : 1) ));
       case LEFT:
-	return( (x==0) ? TRUE : (col_walls[x] & (y ? (3<<(y-1)) : 1) ));
+	return( (x==0) ? TRUE : (col_walls[x-1] & (y ? (3<<(y-1)) : 1) ));
       case RIGHT:
-	return( (x>=8) ? TRUE : (col_walls[x] & (y ? (3<<(y-1)) : 1) ));
+	return( (x>=8) ? TRUE : (col_walls[x]   & (y ? (3<<(y-1)) : 1) ));
       }
       g_assert(0);
       return TRUE;
