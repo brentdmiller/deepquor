@@ -10,7 +10,7 @@
 #include "qposhash.h"
 #include "parameters.h"
 
-IDSTR("$Id: qposhash.cpp,v 1.7 2006/07/18 18:58:09 bmiller Exp $");
+IDSTR("$Id: qposhash.cpp,v 1.8 2006/07/25 22:29:33 bmiller Exp $");
 
 
 /****/
@@ -48,8 +48,8 @@ guint16 qGrowHash<keyType, valType>::defaultqGrowHashFunc
                       +((const uint8_t *)(d))[0])
 #endif
 
-  const char * data = (const char*)(&key);
-  int len = sizeof(key);
+  const char * data = (const char*)(key);
+  int len = sizeof(*key);
   uint32_t hash = len, tmp;
   int rem;
 
