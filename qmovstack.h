@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qmovstack.h,v 1.10 2006/07/23 04:29:56 bmiller Exp $
+// $Id: qmovstack.h,v 1.11 2006/07/25 22:29:33 bmiller Exp $
 
 
 #ifndef INCLUDE_movstack_h
@@ -96,6 +96,7 @@ struct _wallMoveInfo {
 
 typedef std::deque<qMove> qMoveList; 
 typedef std::deque<qMove>::iterator qMoveListIterator;
+typedef std::deque<qMove>::reverse_iterator qMoveListReverseIterator;
 
 
 typedef struct _qMoveStackFrame {
