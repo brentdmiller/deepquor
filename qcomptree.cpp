@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.5 2006/07/27 05:59:27 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.6 2006/07/27 21:55:03 bmiller Exp $");
 
 
 /****/
@@ -56,7 +56,7 @@ qComputationTreeNodeId qComputationTree::addNodeChild
     if (!growNodeHeap())
       return qComputationTreeNode_invalid;
   qComputationNode &parentNode  = nodeHeap.at(node);
-  qComputationNode &newNode = nodeHeap.at(nodeNum);
+  qComputationNode &newNode = nodeHeap[nodeNum];
   newNode.parentNodeIdx = node;
   g_assert(node < nodeNum);
   newNode.childNodes.resize(0);
@@ -72,7 +72,7 @@ qComputationTreeNodeId qComputationTree::addNodeChild
   {
     qComputationNode &tmpNode = nodeHeap.at(*itr);
     
-    if (tmpNode.eval->score <= score + tmpNode.eval->complexity)
+    if (tmpNode.eval->score >= score + tmpNode.eval->complexity)
       break;
     itr++;
   }
@@ -95,8 +95,6 @@ qComputationTreeNodeId qComputationTree::getRootNode() const
 qComputationTreeNodeId qComputationTree::getNthChild
 (qComputationTreeNodeId node, guint8 n) const
 {
-  if (nodeHeap.at(node).childNodes.empty())
-    return qComputationTreeNode_invalid;
   if (n < nodeHeap.at(node).childNodes.size())
     return nodeHeap.at(node).childNodes.at(n);
   else
