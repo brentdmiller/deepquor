@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.13 2006/07/25 22:29:33 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.14 2006/07/27 05:59:27 bmiller Exp $");
 
 
 /****/
@@ -503,7 +503,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	qMoveList possible_moves; // Initially empty
 	qMoveListIterator i;
 
-	getPlayableMoves(pos, &moveStack, &possible_moves);
+	getCandidateMoves(pos, &moveStack, &possible_moves);
 	g_assert(possible_moves.size() > 0);
 
 	// There should there be a way to bypass pruning for analysis mode
@@ -528,10 +528,12 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	    if (((newposInfo==NULL) && (newposInfo=posHash.addElt(&newPos))) ||
 		(!newposInfo->evalExists(otherPlayer)))
 	      {
-		ratePositionByComputation(newPos, otherPlayer, newposInfo);
+		newposEval = ratePositionByComputation(newPos, otherPlayer, newposInfo);
+		if (!newposEval)
+		  continue; // Don't add this position--it wasn't legal
+
 		depth--;
 		++r_positionsEvaluated;
-		newposEval = newposInfo->get(otherPlayer);
 	      }
 	    else if (moveStack.isInEvalStack(newposInfo, otherPlayer))
 	      {
@@ -540,13 +542,12 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	    else
 	      newposEval = newposInfo->get(otherPlayer);
 
-	    qComputationTreeNodeId new_node;
-	    new_node = computationTree.addNodeChild(currentTreeNode,
-						    possible_move,
-						    newposEval);
+	    qComputationTreeNodeId new_node =
+	      computationTree.addNodeChild(currentTreeNode,
+					   possible_move,
+					   newposEval);
 	    computationTree.setNodePosInfo(new_node, newposInfo);
 	  }
-
       }
     else
       {
