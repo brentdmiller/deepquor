@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.9 2006/07/24 03:34:45 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.10 2006/07/27 05:59:27 bmiller Exp $");
 
 
 /****/
@@ -152,8 +152,7 @@ qPositionEvaluation const *ratePositionByComputation
 	// the modifications to the graph, but decided it was too hard.  This
 	// is described in a comment in qcomptree.h
 
-	bool pathFound;
-	pathFound = qDijkstra(&darg);
+	bool pathFound = qDijkstra(&darg);
 
 	// Put the opposing pawn back
 	pos.setWhitePawn(oldWhite);
