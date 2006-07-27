@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.6 2006/07/24 03:34:45 bmiller Exp $
+// $Id: qcomptree.h,v 1.7 2006/07/27 05:59:27 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
@@ -28,8 +28,9 @@
  * called on.
  */
 
-typedef guint16 qComputationTreeNodeId;
+typedef guint32 qComputationTreeNodeId;
 const qComputationTreeNodeId qComputationTreeNode_invalid = 0;
+const qComputationTreeNodeId qComputationTreeNode_max = 0xffff;
 
 
 /* PRIVATE LOCAL CLASS
@@ -120,7 +121,7 @@ class qComputationTree {
 
   // addNodeChild: 
   // Adds an edge to the current node, leading to a new child node
-  // Returns new child node's id.
+  // Returns new child node's id, or qComputationTreeNode_invalid on failure.
   // Note: we store the mv's eval pointer instead of copying, so any time we
   // free memory from the positionHash we will be forced to discard the
   // current state of the computation tree and rebuild it.
@@ -159,9 +160,13 @@ class qComputationTree {
   qComputationTreeNodeId nodeNum; // lowest free node
   qComputationTreeNodeId maxNode; // highest existing node; alloc more when used
 
-  inline void growNodeHeap()
-    { nodeHeap.resize(COMPTREE_GROW_SIZE + nodeHeap.size());
+  inline bool growNodeHeap()
+    { 
+      if (nodeHeap.size() > qComputationTreeNode_max - COMPTREE_GROW_SIZE)
+        return FALSE;
+      nodeHeap.resize(COMPTREE_GROW_SIZE + nodeHeap.size());
       maxNode = nodeHeap.size() - 1;
+      return TRUE;
     };
   void qComputationTree::resetBestChild(qComputationNode &n);
 };
