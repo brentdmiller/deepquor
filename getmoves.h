@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: getmoves.h,v 1.4 2006/07/15 05:16:38 bmiller Exp $
+// $Id: getmoves.h,v 1.5 2006/07/27 05:59:27 bmiller Exp $
 
 #ifndef INCLUDE_getmoves_h
 #define INCLUDE_getmoves_h 1
@@ -16,13 +16,23 @@
 #include <deque>
 
 // Populates list of all legally playable moves in a given position,
-// inserting moves at the end of the list.
+// inserting moves at the end of the list.  Tries to append pawn moves closer
+// to the beginning than wall drops.
 // Returns listToPopulate on success, NULL on failure
 // Note: uses the moveStack to accelerate finding possible moves.
 // See the moveStack class for more info.
 qMoveList *getPlayableMoves(const qPosition   *pos,
 			    qMoveStack        *movStack,
 			    qMoveList         *listToPopulate);
+
+// Same as getPlayableMoves, but this doesn't bother to verify the legality
+// of returned moves.  Thus, it's guaranteed to return a list including every
+// playable move, and possibly some illegal moves.  Any move that is legal is
+// is guaranteed to be playable.
+qMoveList *getCandidateMoves(const qPosition  *pos,
+                             qMoveStack       *movStack,
+                             qMoveList        *moveList);
+
 
 
 // Populates list of all legally playable pawn moves for given player & pos
