@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: parameters.h,v 1.5 2006/07/18 06:55:33 bmiller Exp $
+// $Id: parameters.h,v 1.6 2006/07/27 05:59:27 bmiller Exp $
 
 
 #ifndef INCLUDE_parameters_h
@@ -30,8 +30,8 @@
 #define HEAP_INITIAL_BLOCK_SIZE 32
 #define HEAP_BLOCK_SIZE       1024
 
-#define COMPTREE_INITIAL_SIZE 4096
-#define COMPTREE_GROW_SIZE    1024
+#define COMPTREE_INITIAL_SIZE 32768
+#define COMPTREE_GROW_SIZE    4096
 
 #define BASE_COMPLEXITY   36 /* Before applying any modifiers */
 
