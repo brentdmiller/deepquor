@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.4 2006/07/24 03:34:45 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.5 2006/07/27 05:59:27 bmiller Exp $");
 
 
 /****/
@@ -37,8 +37,7 @@ qComputationTree::~qComputationTree()
 void qComputationTree::initializeTree()
 {
   nodeNum = 2; // lowest free node
-  while (maxNode < nodeNum)
-    growNodeHeap();
+  g_assert(maxNode > nodeNum);
   qComputationNode rootNode = nodeHeap.at(1);
   rootNode.parentNodeIdx = qComputationTreeNode_invalid;
   rootNode.mv = moveNull;
@@ -54,10 +53,12 @@ qComputationTreeNodeId qComputationTree::addNodeChild
  const qPositionEvaluation *eval)
 {
   while (maxNode < nodeNum)
-    growNodeHeap();
+    if (!growNodeHeap())
+      return qComputationTreeNode_invalid;
   qComputationNode &parentNode  = nodeHeap.at(node);
   qComputationNode &newNode = nodeHeap.at(nodeNum);
   newNode.parentNodeIdx = node;
+  g_assert(node < nodeNum);
   newNode.childNodes.resize(0);
   newNode.childWithBestEval= 0;
   newNode.mv   = mv;
