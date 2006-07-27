@@ -10,7 +10,7 @@
 #include "qmovstack.h"
 #include "qdijkstra.h"
 
-IDSTR("$Id: getmoves.cpp,v 1.5 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: getmoves.cpp,v 1.6 2006/07/27 05:59:27 bmiller Exp $");
 
 
 /****/
@@ -161,11 +161,42 @@ qMoveList *getPlayableMoves(const qPosition  *pos,
        * edges.
        */
       dijArg.pos = &testpos;
-      if ( qDijkstra(&dijArg) )
-	moveList->push_back(mv);
+      if ( qDijkstra(&dijArg) ) {
+        dijArg.player.changePlayer();
+        if ( qDijkstra(&dijArg) )
+	  moveList->push_back(mv);  // Both players could still reach the fin
+      }
     }
 
-  };
+  }
+  return moveList;
+}
+
+
+qMoveList *getCandidateMoves(const qPosition  *pos,
+			     qMoveStack       *movStack,
+			     qMoveList        *moveList)
+{
+  if (!pos || !movStack || !moveList)
+    return NULL;
+
+  qPlayer player2move = movStack->getPlayer2Move();
+
+  // Push legal player moves onto the beginning of the list;
+  if (!getPossiblePawnMoves(pos, player2move, moveList))
+    return NULL;
+
+  // Insert all possible wall moves
+  if (pos->numWallsLeft(player2move)) {
+    qMoveList tmpList;  // Creates empty list
+    qMove mv;
+    qDijkstraArg dijArg;
+    dijArg.pos = NULL;
+    dijArg.player = player2move;
+    dijArg.getAllRoutes = FALSE;
+
+    movStack->getPossibleWallMoves(&tmpList);
+  }
   return moveList;
 }
 
