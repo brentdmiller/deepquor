@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.6 2006/07/27 21:55:03 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.7 2006/07/28 21:36:28 bmiller Exp $");
 
 
 /****/
@@ -172,22 +172,21 @@ void qComputationTree::setNodeEval
     return;
   }
 
-  gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
-
-  bool improved = FALSE;
-  const qPositionEvaluation *prevEval = nodeHeap.at(node).eval;
-  if (prevEval &&  (score + prevEval->complexity < prevEval->score))
-    improved = TRUE;
-
   nodeHeap.at(node).eval = eval;
 
+  // Adjust parent node's sorted child list & associated data as needed
   if (node != 1) {
+    gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
+
+    // Modify best child, if it changed
     qComputationNode &parent = nodeHeap.at(nodeHeap.at(node).parentNodeIdx);
     if (!parent.childWithBestEval)
       parent.childWithBestEval = node;
     else if (parent.childWithBestEval == node) {
-      if (!improved) // This was the best node but it worsened...recheck it
-        resetBestChild(parent);
+      // Note:  I was trying to examine the old value in nodeHeap[node] and
+      // only reset if the score worsened, but can we trust that the contents
+      // of the eval pointer didn't change?  In case not, better recompute.
+      resetBestChild(parent);
     } else if (eval->score <
              getNodeEval(parent.childWithBestEval)->score)
       parent.childWithBestEval = node;
@@ -199,27 +198,30 @@ void qComputationTree::setNodeEval
         ++itr;
 
       itr = parent.childNodes.erase(itr);
-      if (improved) {
-        while( itr != parent.childNodes.begin() )
-        {
-          --itr;
-          qComputationNode &tmpNode = nodeHeap.at(*itr);
-  
-          if (tmpNode.eval->score <= score + tmpNode.eval->complexity) {
-            itr++;
-            break;
-          }
-        }
-      } else {
-        while( itr != parent.childNodes.end() )
+
+      bool maybeImproved=TRUE;
+      while( itr != parent.childNodes.end() )
         {
           qComputationNode &tmpNode = nodeHeap.at(*itr);
   
           if (tmpNode.eval->score >= score + tmpNode.eval->complexity)
             break;
+
           itr++;
+          maybeImproved=FALSE;
         }
-      }
+
+      if (maybeImproved)
+        while( itr != parent.childNodes.begin() )
+          {
+            --itr;
+            qComputationNode &tmpNode = nodeHeap.at(*itr);
+  
+            if (tmpNode.eval->score <= score + tmpNode.eval->complexity) {
+              itr++;
+              break;
+            }
+          }
       parent.childNodes.insert(itr, node);
     }
   }
