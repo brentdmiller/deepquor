@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.14 2006/07/27 05:59:27 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.15 2006/07/28 21:36:28 bmiller Exp $");
 
 
 /****/
@@ -400,9 +400,16 @@ const qPositionEvaluation *qSearcher::iScanDeeper
     if (posInfo->evalExists(player2move))
       return posInfo->get(player2move);
     else {
+      ++r_positionsEvaluated;
+      if (pos->isWon(player2move)) {
+	posInfo->set(player2move, positionEval_won);
+	return positionEval_won;
+      } else if (pos->isLost(player2move)) {
+	posInfo->set(player2move, positionEval_lost);
+	return positionEval_lost;
+      }
       qPositionEvaluation const *rval =
 	ratePositionByComputation(*pos, player2move, posInfo);
-      ++r_positionsEvaluated;
       return rval;
     }
   }
