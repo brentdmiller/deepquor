@@ -93,18 +93,21 @@ qMove doTest
 int main
 (int argc, char **argv)
 {
+  printf("case 1 (expect UP)\n");
   qPosition testPos(NULL, NULL, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
 		    0, 0); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
+  printf("case 2 (expect UP)\n");
   testPos = qPosition (NULL, NULL, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
 		    2, 2); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
+  printf("case 3 (expect wall at ROW 0, pos 3 or 4)\n");
   testPos = qPosition (NULL, NULL, // Walls
 		    qSquare(1,5), qSquare(4,1), // Pawns
 		    5, 0); // Walls remaining
@@ -113,22 +116,40 @@ int main
 
   guint8 testrows[] = {0,0,0,0,0,0,0,2};
 
+  printf("case 4 (expect LEFT or RIGHT)\n");
   testPos = qPosition (testrows, NULL, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
 		    0, 0); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
+  printf("case 5 (expect LEFT)\n");
   testPos = qPosition (testrows, NULL, // Walls
 		    qSquare(1,7), qSquare(4,2), // Pawns
 		    0, 0); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
-  guint8 testcols[] = {64,64,64,0,0,0,0,2};
+  printf("case 6 (expect RIGHT)\n");
+  guint8 testcols[] = {64,0,0,0,0,0,0,0};
   testPos = qPosition (testrows, testcols, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
 		    0, 0); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  guint8 testcols2[] = {64,0,64,0,0,0,0,0};
+  printf("case 7 (expect DOWN)\n");
+  testPos = qPosition (testrows, testcols2, // Walls
+		    qSquare(1,7), qSquare(4,8), // Pawns
+		    0, 0); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 8 (forced loss)\n");
+  testPos = qPosition (NULL, NULL, // Walls
+		    qSquare(1,4), qSquare(4,1), // Pawns
+		    0, 1); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
