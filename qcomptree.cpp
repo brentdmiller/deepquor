@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.7 2006/07/28 21:36:28 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.8 2006/07/29 06:03:54 bmiller Exp $");
 
 
 /****/
@@ -67,7 +67,7 @@ qComputationTreeNodeId qComputationTree::addNodeChild
 
   // Insert in sorted order by - eval.score - eval.complexity (per qcomptree.h)
   gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
-  std::deque<qComputationTreeNodeId>::iterator itr(parentNode.childNodes.begin());
+  std::list<qComputationTreeNodeId>::iterator itr(parentNode.childNodes.begin());
   while( itr != parentNode.childNodes.end() )
   {
     qComputationNode &tmpNode = nodeHeap.at(*itr);
@@ -90,16 +90,16 @@ qComputationTreeNodeId qComputationTree::addNodeChild
 qComputationTreeNodeId qComputationTree::getRootNode() const
 { return 1; }
 
-// Returns 0 if no such child;
-// Children are ordered according to eval.score + eval.complexity
-qComputationTreeNodeId qComputationTree::getNthChild
-(qComputationTreeNodeId node, guint8 n) const
+qComputationTreeNodeList *qComputationTree::getNodeChildList
+(qComputationTreeNodeId node)
 {
-  if (n < nodeHeap.at(node).childNodes.size())
-    return nodeHeap.at(node).childNodes.at(n);
-  else
-    return qComputationTreeNode_invalid;
+  return &(nodeHeap.at(node).childNodes);
 }
+bool qComputationTree::nodeHasChildList(qComputationTreeNodeId node)
+{
+  return (nodeHeap.at(node).childNodes.size() != 0);
+}
+
 
 qComputationTreeNodeId qComputationTree::getBestScoringChild
 (qComputationTreeNodeId node) const
@@ -129,7 +129,7 @@ void qComputationTree::setNodePosInfo
 void qComputationTree::resetBestChild
 (qComputationNode &n)
 {
-  std::deque<qComputationTreeNodeId>::iterator itr(n.childNodes.begin());
+  std::list<qComputationTreeNodeId>::iterator itr(n.childNodes.begin());
   if (itr == n.childNodes.end())
     n.childWithBestEval = 0;
   else {
@@ -162,7 +162,7 @@ void qComputationTree::setNodeEval
       return;
 
     qComputationNode &parent = nodeHeap.at(nodeHeap.at(node).parentNodeIdx);
-    std::deque<qComputationTreeNodeId>::iterator itr(parent.childNodes.begin());
+    std::list<qComputationTreeNodeId>::iterator itr(parent.childNodes.begin());
     while (*itr != node)
       ++itr;
 
@@ -192,7 +192,7 @@ void qComputationTree::setNodeEval
       parent.childWithBestEval = node;
 
     { // Reorder node in parent's child list according to new score
-      std::deque<qComputationTreeNodeId>::iterator
+      std::list<qComputationTreeNodeId>::iterator
         itr(parent.childNodes.begin());
       while (*itr != node)
         ++itr;
