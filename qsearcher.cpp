@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.15 2006/07/28 21:36:28 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.16 2006/07/29 06:03:54 bmiller Exp $");
 
 
 /****/
@@ -46,7 +46,7 @@ class qCompTreeChildEdgeEvalIterator:public qEvalIterator {
 private:
   qComputationTree *compTree;
   qComputationTreeNodeId nodeId;
-  guint8 edgeIdx;
+  qComputationTreeNodeListIterator edgeItor;
 
 public:
   // Walks through position in a qCompTree node
@@ -55,23 +55,21 @@ public:
   {
     compTree = tree;
     nodeId   = node;
-    edgeIdx  = 0;
+    edgeItor = tree->getNodeChildList(node)->begin();
   };
   ~qCompTreeChildEdgeEvalIterator() {;};
 
   void next() {
-    ++edgeIdx;
+    ++edgeItor;
   };
 
   qPositionEvaluation const *val() {
-    qComputationTreeNodeId childId =
-      compTree->getNthChild(nodeId, edgeIdx);
-    if (childId == qComputationTreeNode_invalid)
-      return NULL;
-    return compTree->getNodeEval(childId);
+    g_assert(edgeItor != compTree->getNodeChildList(nodeId)->end());
+    return compTree->getNodeEval(*edgeItor);
   };
   bool atEnd() {
-    return (compTree->getNthChild(nodeId, edgeIdx)==qComputationTreeNode_invalid) ? TRUE : FALSE;
+    return (edgeItor == compTree->getNodeChildList(nodeId)->end()) ?
+      TRUE : FALSE;
   };
 };
 
@@ -284,13 +282,18 @@ qSearcher::iSearch
 
       scoreThresh = static_cast<gint32>(bestEval->score) + bestEval->complexity;
 
-      guint8 n = 0;
+      int n=0;
 
       if (slop) {
+        qComputationTreeNodeListIterator childItor =
+          computationTree.getNodeChildList(currentTreeNode)->begin();
+        qComputationTreeNodeListIterator childListEnd = 
+          computationTree.getNodeChildList(currentTreeNode)->end();
 	for (;
-	     curPosId = computationTree.getNthChild(currentTreeNode, n);
-	     n++)
+	     childItor != childListEnd;
+	     ++childItor)
 	  {
+	    curPosId = *childItor;
 	    // if (curPosId == bestPosId)
 	    //   continue;
 
@@ -316,10 +319,14 @@ qSearcher::iSearch
       //   Have we met minimum depth yet? (How do we know???)
       //   Yes: return bestMove
       //   No: Further evaluate best move (How do we implement this???)
-      if (n <= 1) {
-	// Check if anything beyond move 0 is within striking range
-	curPosId = computationTree.getNthChild(currentTreeNode, 1);
-	curEval = computationTree.getNodeEval(curPosId);
+      if (n <= 1) // If we already know about >1 contendor, skip this check
+      {  
+        qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+        if (c->size() < 2)
+          break;
+	curPosId = *(++c->begin());
+        curEval = computationTree.getNodeEval(curPosId);
+
 	if (curEval->score >= scoreThresh + curEval->complexity)
 	  {
 	    // Not even child 1 is a contendor--there's only one (child 0).
@@ -442,11 +449,8 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 
   if (depth < 0)
     {
-      guint8 move_idx;
-      qComputationTreeNodeId next_position_id;
-
       // Make sure we've stored the list of moves in computationTree
-      if (!computationTree.getNthChild(currentTreeNode, 0)) {
+      if (!computationTree.nodeHasChildList(currentTreeNode)) {
 	qMoveList possible_moves; // Initially empty
 
 	// Maybe we don't need to verify what moves give legal positions.
@@ -471,10 +475,17 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 				       positionEval_none);
       }
 
-      for (move_idx=0;
-	   next_position_id = computationTree.getNthChild(currentTreeNode,
-							  move_idx);
-	   move_idx++) {
+      qComputationTreeNodeId next_position_id;
+      qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+
+      // Must copy list because score updates will alter the original
+      qComputationTreeNodeList tmpList(*c);
+
+      for (;
+           !tmpList.empty();
+	   tmpList.pop_front()) {
+	next_position_id = tmpList.front();
+
 	qMove possible_move = computationTree.getNodePrecedingMove(next_position_id);
 
 	moveStack.pushEval(posInfo, computationTree.getNodePosInfo(next_position_id), &posHash, player2move, possible_move, NULL);
@@ -496,7 +507,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 
     // Make sure we have list of possible moves, with an evaluation of
     // each possible move (so that we can compute score from neighbors).
-    if (!computationTree.getNthChild(currentTreeNode, 0))
+    if (!computationTree.nodeHasChildList(currentTreeNode))
       {
 #if 0  /* Could we just do this??? */
 	// optimization:  we're into new territory, so most adjacent moves
@@ -581,11 +592,16 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	gint32 scoreThresh = static_cast<guint32>(bestEval->score) + bestEval->complexity;
 
 	// Skim through contendors to pick the best one to refine,
-	guint8 n;
-	for (n=0;
-	     curMoveId = computationTree.getNthChild(currentTreeNode, n);
-	     n++)
+	guint8 n=0;
+        qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+        qComputationTreeNodeListIterator itr = c->begin();
+        qComputationTreeNodeListIterator childListEnd = c->end();
+
+        for (;
+             itr != childListEnd;
+	     ++itr, ++n)
 	  {
+	    curMoveId = *itr;
 	    if (curMoveId == bestMoveId)
 	      continue;
 
