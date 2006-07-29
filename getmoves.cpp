@@ -10,7 +10,7 @@
 #include "qmovstack.h"
 #include "qdijkstra.h"
 
-IDSTR("$Id: getmoves.cpp,v 1.6 2006/07/27 05:59:27 bmiller Exp $");
+IDSTR("$Id: getmoves.cpp,v 1.7 2006/07/29 06:48:51 bmiller Exp $");
 
 
 /****/
@@ -37,7 +37,7 @@ qMoveList *getPossiblePawnMoves
     };
   static const qMove moveList_white[] =
     {
-      moveUp, moveDown, moveLeft, moveRight,
+      moveUp, moveDown, moveLeft, moveRight, moveNull,
       moveUpUp, moveDownDown, moveLeftLeft, moveRightRight, moveNull,
       moveUL, moveUR, moveDL, moveDR, moveUL, moveDL, moveUR, moveDR, moveNull
     };
@@ -50,7 +50,7 @@ qMoveList *getPossiblePawnMoves
     };
   static const qMove moveList_black[] =
     {
-      moveDown, moveUp, moveLeft, moveRight,
+      moveDown, moveUp, moveLeft, moveRight, moveNull,
       moveDownDown, moveUpUp, moveLeftLeft, moveRightRight, moveNull,
       moveDL, moveDR, moveUL, moveUR, moveDL, moveUL, moveDR, moveUR, moveNull
     };
@@ -107,10 +107,10 @@ qMoveList *getPossiblePawnMoves
       {
 	/* Other side is blocked, try deflecting in each direction */
 	int j=2*(i+5);
-	if (!pos->isBlockedByWall(dest, j))
+	if (!pos->isBlockedByWall(dest, moveDirections[player2move.getPlayerId()][j]))
 	  returnList->push_back(moveMoves[player2move.getPlayerId()][j]);
 	j++;
-	if (!pos->isBlockedByWall(dest, j))
+	if (!pos->isBlockedByWall(dest, moveDirections[player2move.getPlayerId()][j]))
 	  returnList->push_back(moveMoves[player2move.getPlayerId()][j]);
 	continue;
       }
