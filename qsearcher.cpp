@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.16 2006/07/29 06:03:54 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.17 2006/07/29 06:49:50 bmiller Exp $");
 
 
 /****/
@@ -519,14 +519,14 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	}
 #endif
 	qMoveList possible_moves; // Initially empty
-	qMoveListIterator i;
 
 	getCandidateMoves(pos, &moveStack, &possible_moves);
 	g_assert(possible_moves.size() > 0);
 
-	// There should there be a way to bypass pruning for analysis mode
+	// There should be a way to bypass pruning for analysis mode
 	pruneUselessMoves(pos, &possible_moves);
 
+	qMoveListIterator i;
 	for (i  = possible_moves.begin();
 	     i != possible_moves.end();
 	     i++)
