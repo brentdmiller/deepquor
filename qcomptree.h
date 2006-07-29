@@ -5,14 +5,14 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.7 2006/07/27 05:59:27 bmiller Exp $
+// $Id: qcomptree.h,v 1.8 2006/07/29 06:03:54 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
 
 
 #include <vector>
-#include <deque>
+#include <list>
 #include "qtypes.h"
 #include "qposinfo.h"
 #include "parameters.h"
@@ -32,6 +32,8 @@ typedef guint32 qComputationTreeNodeId;
 const qComputationTreeNodeId qComputationTreeNode_invalid = 0;
 const qComputationTreeNodeId qComputationTreeNode_max = 0xffff;
 
+typedef std::list<qComputationTreeNodeId> qComputationTreeNodeList;
+typedef std::list<qComputationTreeNodeId>::iterator qComputationTreeNodeListIterator;
 
 /* PRIVATE LOCAL CLASS
  * qComputationNode class
@@ -54,7 +56,7 @@ public:
      qPlayer   playerMoving;
   */
   qComputationTreeNodeId              parentNodeIdx;
-  std::deque<qComputationTreeNodeId>  childNodes;
+  std::list<qComputationTreeNodeId>   childNodes;
 
   // Note that the following is actually the lowest opponent eval
   qComputationTreeNodeId              childWithBestEval;
@@ -129,11 +131,11 @@ class qComputationTree {
 				      qMove mv,
 				      const qPositionEvaluation *eval);
 
-  // Returns 0 if no such child;
   // Because we usually want to find the move yielding the worst possible
-  // eval for our opponent, children are ordered according to
-  // -eval.score - eval.complexity
-  qComputationTreeNodeId getNthChild(qComputationTreeNodeId node, guint8 n) const;
+  // eval for our opponent, this list is reverse sorted by
+  // eval.score + eval.complexity
+  bool nodeHasChildList(qComputationTreeNodeId node);
+  qComputationTreeNodeList *getNodeChildList(qComputationTreeNodeId node);
 
   // Returns the childNode with the lowest eval.score
   qComputationTreeNodeId getBestScoringChild(qComputationTreeNodeId node) const;
