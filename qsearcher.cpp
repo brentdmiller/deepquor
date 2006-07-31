@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.17 2006/07/29 06:49:50 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.18 2006/07/31 06:25:50 bmiller Exp $");
 
 
 /****/
@@ -564,6 +564,8 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	      computationTree.addNodeChild(currentTreeNode,
 					   possible_move,
 					   newposEval);
+	    if (!new_node)
+	      return NULL;
 	    computationTree.setNodePosInfo(new_node, newposInfo);
 	  }
       }
