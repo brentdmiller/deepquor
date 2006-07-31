@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.8 2006/07/23 04:29:56 bmiller Exp $
+// $Id: qtypes.h,v 1.9 2006/07/31 06:25:50 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -25,6 +25,19 @@ typedef int16_t gint16;
 typedef uint16_t guint16;
 typedef int32_t gint32;
 typedef uint32_t guint32;
+#define G_MININT8       ((gint8)  0x80)
+#define G_MAXINT8       ((gint8)  0x7f)
+#define G_MAXUINT8      ((guint8) 0xff)
+#define G_MININT16      ((gint16)  0x8000)
+#define G_MAXINT16      ((gint16)  0x7fff)
+#define G_MAXUINT16     ((guint16) 0xffff)
+#define G_MININT32      ((gint32)  0x80000000)
+#define G_MAXINT32      ((gint32)  0x7fffffff)
+#define G_MAXUINT32     ((guint32) 0xffffffff)
+#define G_MININT64      G_GINT64_CONSTANT(0x8000000000000000)
+#define G_MAXINT64      G_GINT64_CONSTANT(0x7fffffffffffffff)
+#define G_MAXUINT64     G_GINT64_CONSTANT(0xffffffffffffffffU)
+
 #define g_assert assert
 #ifndef DEBUG
 #define NDEBUG
