@@ -8,7 +8,7 @@
 
 #include "qmovstack.h"
 
-IDSTR("$Id: qmovstack.cpp,v 1.10 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: qmovstack.cpp,v 1.11 2006/07/31 06:25:50 bmiller Exp $");
 
 
 /****/
@@ -328,7 +328,7 @@ qPositionInfo *qMoveStack::pushEval
       this->moveStack[sp].posInfo = posHash->getOrAddElt(this->getPos());
   }
   g_assert(this->moveStack[sp].posInfo);
-  setMoveInEval(this->moveStack[sp].posInfo, this->moveStack[sp].playerMoved);
+  setMoveInEval(this->moveStack[sp].posInfo, whoMoved);
 
   // 2. Push move onto stack with posInfo
   if (!endPosInfo) {
