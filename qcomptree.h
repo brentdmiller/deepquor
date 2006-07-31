@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.8 2006/07/29 06:03:54 bmiller Exp $
+// $Id: qcomptree.h,v 1.9 2006/07/31 06:25:50 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
@@ -30,7 +30,7 @@
 
 typedef guint32 qComputationTreeNodeId;
 const qComputationTreeNodeId qComputationTreeNode_invalid = 0;
-const qComputationTreeNodeId qComputationTreeNode_max = 0xffff;
+const qComputationTreeNodeId qComputationTreeNode_max = G_MAXUINT32;
 
 typedef std::list<qComputationTreeNodeId> qComputationTreeNodeList;
 typedef std::list<qComputationTreeNodeId>::iterator qComputationTreeNodeListIterator;
