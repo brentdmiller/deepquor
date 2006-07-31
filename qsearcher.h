@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qsearcher.h,v 1.9 2006/07/24 03:34:45 bmiller Exp $
+// $Id: qsearcher.h,v 1.10 2006/07/31 06:25:50 bmiller Exp $
 
 #ifndef INCLUDE_searcher_h
 #define INCLUDE_searcher_h 1
@@ -89,7 +89,8 @@ private:
    *   this number should probably become (maybe starting at 200 and going
    *   up to 300 or 400(?) eventually, as we begin to evaluate
    *   positions with larger number of contibuting computations.
-   * Returns evaluation for the position it was called with.
+   * Returns evaluation for the position it was called with, or NULL
+   *   on error.
    */
   const qPositionEvaluation *scanDeeper(const qPosition *pos,
 					qPlayer          player2move,
