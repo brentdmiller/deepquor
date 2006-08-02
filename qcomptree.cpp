@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.8 2006/07/29 06:03:54 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.9 2006/08/02 04:08:07 bmiller Exp $");
 
 
 /****/
@@ -43,8 +43,8 @@ void qComputationTree::initializeTree()
   rootNode.mv = moveNull;
   rootNode.eval = NULL;
   rootNode.childNodes.resize(0);
-  /* guint16        childWithBestEval; */ // No need to touch this
-  /* qPositionInfo *posInfo;                */ // No need to touch this???
+  rootNode.childWithBestEval=0;
+  rootNode.posInfo=NULL;
 }
 
 qComputationTreeNodeId qComputationTree::addNodeChild
@@ -57,8 +57,8 @@ qComputationTreeNodeId qComputationTree::addNodeChild
       return qComputationTreeNode_invalid;
   qComputationNode &parentNode  = nodeHeap.at(node);
   qComputationNode &newNode = nodeHeap[nodeNum];
-  newNode.parentNodeIdx = node;
   g_assert(node < nodeNum);
+  newNode.parentNodeIdx = node;
   newNode.childNodes.resize(0);
   newNode.childWithBestEval= 0;
   newNode.mv   = mv;
@@ -172,8 +172,6 @@ void qComputationTree::setNodeEval
     return;
   }
 
-  nodeHeap.at(node).eval = eval;
-
   // Adjust parent node's sorted child list & associated data as needed
   if (node != 1) {
     gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
@@ -225,6 +223,7 @@ void qComputationTree::setNodeEval
       parent.childNodes.insert(itr, node);
     }
   }
+  nodeHeap.at(node).eval = eval;
 }
 
 const qPositionEvaluation *qComputationTree::getNodeEval
