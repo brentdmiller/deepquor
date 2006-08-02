@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.10 2006/07/27 05:59:27 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.11 2006/08/02 04:08:07 bmiller Exp $");
 
 
 /****/
@@ -265,9 +265,9 @@ inline void coalesceScores(const qPositionEvaluation &bestEval,
 
   newVal = newEval.complexity + (3*static_cast<gint32>(currEval.complexity)) / (10 + static_cast<gint32>(currEval.score) - bestEval.score);
   if (newVal > qComplexity_max)
-    newEval.score = qComplexity_max;
+    newEval.complexity = qComplexity_max;
   else 
-    newEval.score = static_cast<guint16>(newVal);
+    newEval.complexity = static_cast<guint16>(newVal);
 }
 
 qPositionInfo    *ratePositionFromNeighbors
