@@ -78,7 +78,7 @@ qMove doTest
 			3600*24*1000,// Hard limit on our avail. time
 			3600*16*1000);// Start relaxing criteria after this
 
-  printf("\nRETURNED MOVE FOR WHITE:\n");
+  printf("\nRETURNED MOVE FOR %s:\n", whoseMove.isWhite() ? "WHITE" : "BLACK");
   printMove(mv);
   movStack->pushMove(whoseMove, mv);
   //dumpSituation(movStack);
@@ -138,8 +138,18 @@ int main
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
+  printf("case 7a (expect DOWN probably--lost pos)\n");
+  guint8 testrows7a[] = {0,0,0,0,0,0,0,2};
+  guint8 testcols7a[] = {64,0,64,0,0,0,1,0};
+
+  testPos = qPosition(testrows7a, testcols7a, // Walls
+		    qSquare(54), qSquare(80), // Pawns
+		    0, 0); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::BlackPlayer)); // Whose turn
+
   guint8 testcols2[] = {64,0,64,0,0,0,0,0};
-  printf("case 7 (expect DOWN)\n");
+  printf("case 7b (expect DOWN)\n");
   testPos = qPosition (testrows, testcols2, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
 		    0, 0); // Walls remaining
@@ -150,6 +160,20 @@ int main
   testPos = qPosition (NULL, NULL, // Walls
 		    qSquare(1,4), qSquare(4,1), // Pawns
 		    0, 1); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 9==case 3 + walls (expect wall at ROW 0, pos 3 or 4)\n");
+  testPos = qPosition (NULL, NULL, // Walls
+		    qSquare(1,5), qSquare(4,1), // Pawns
+		    5, 1); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 10 (expect wall at ROW 5, pos 1)\n");
+  testPos = qPosition (NULL, testcols2, // Walls
+		    qSquare(1,6), qSquare(4,4), // Pawns
+		    1, 1); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 
