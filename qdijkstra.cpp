@@ -9,7 +9,7 @@
 #include "qposition.h"
 #include <deque>
 
-IDSTR("$Id: qdijkstra.cpp,v 1.4 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: qdijkstra.cpp,v 1.5 2006/08/02 04:08:07 bmiller Exp $");
 
 
 /****/
@@ -33,7 +33,7 @@ int qDijkstra
 
   int rval = 0;
   std::deque<qSquare> frontier;
-  int dist[qSquare::maxSquareNum] = {0};
+  int dist[qSquare::maxSquareNum+1] = {0};
   /* 0 will represent infinite distance to squares (i.e. unvisited squares)
    * >0 will represent distance+1 from the pawn to that square.
    * When we reach a finishing square, subtract 1 to get moves to that square.
