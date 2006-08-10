@@ -8,7 +8,7 @@
 
 #include "qcomptree.h"
 
-IDSTR("$Id: qcomptree.cpp,v 1.9 2006/08/02 04:08:07 bmiller Exp $");
+IDSTR("$Id: qcomptree.cpp,v 1.10 2006/08/10 07:40:02 bmiller Exp $");
 
 
 /****/
@@ -43,7 +43,6 @@ void qComputationTree::initializeTree()
   rootNode.mv = moveNull;
   rootNode.eval = NULL;
   rootNode.childNodes.resize(0);
-  rootNode.childWithBestEval=0;
   rootNode.posInfo=NULL;
 }
 
@@ -60,7 +59,6 @@ qComputationTreeNodeId qComputationTree::addNodeChild
   g_assert(node < nodeNum);
   newNode.parentNodeIdx = node;
   newNode.childNodes.resize(0);
-  newNode.childWithBestEval= 0;
   newNode.mv   = mv;
   newNode.eval = eval;
   newNode.posInfo = NULL;
@@ -78,35 +76,111 @@ qComputationTreeNodeId qComputationTree::addNodeChild
   }
   parentNode.childNodes.insert(itr, nodeNum);
 
-  // Update parent's childWithBestEval record, if needed
-  if (!parentNode.childWithBestEval)
-    parentNode.childWithBestEval = nodeNum;
-  else if (eval->score < getNodeEval(parentNode.childWithBestEval)->score)
-    parentNode.childWithBestEval = nodeNum;
-
   return nodeNum++;
 }
 
 qComputationTreeNodeId qComputationTree::getRootNode() const
 { return 1; }
 
-qComputationTreeNodeList *qComputationTree::getNodeChildList
-(qComputationTreeNodeId node)
+const qComputationTreeNodeList *qComputationTree::getNodeChildList
+(qComputationTreeNodeId node) const
 {
   return &(nodeHeap.at(node).childNodes);
 }
-bool qComputationTree::nodeHasChildList(qComputationTreeNodeId node)
+bool qComputationTree::nodeHasChildList(qComputationTreeNodeId node) const
 {
   return (nodeHeap.at(node).childNodes.size() != 0);
 }
 
+qComputationTreeNodeId qComputationTree::sortNodeChildList
+(qComputationTreeNodeId node)
+{
+  qComputationTreeNodeList &childList = nodeHeap.at(node).childNodes;
+
+  // Bubblicious sort (OPTIMIZE???  Bubble may be ok since lists are nearly sorted)
+  qComputationTreeNodeListIterator itr(childList.begin());
+  if (itr==childList.end())
+    return qComputationTreeNode_invalid;
+
+  register const qPositionEvaluation *eval = getNodeEval(*itr);
+  gint32 prev_score = static_cast<gint32>(eval->score) - eval->complexity;
+  gint32 new_score = 0;
+
+  qComputationTreeNodeId childNodeWithBestEval = *itr;
+  gint16 bestScore = eval->score;
+
+  ++itr;
+
+  // Find out-of order nodes, and immediately bubble up the better node until it's in order.
+  // This is quasi-bubble sort/quasi-insert sort.  Since we bubble each elt as far as needed to
+  // put it in order (instead of one position per swap), we sort in one pass.
+  while (itr != childList.end()) {
+    eval = getNodeEval(*itr);
+
+    if (eval->score < bestScore) {
+      childNodeWithBestEval = *itr;
+      bestScore = eval->score;
+    }
+
+    new_score = static_cast<gint32>(eval->score) - eval->complexity;
+    if (new_score >= prev_score) {
+      prev_score = new_score;
+      itr++;
+      continue;
+    }
+
+    // Found an out-of-order pair; move the better elt up until it's in order
+    qComputationTreeNodeId jettsonNode /* It's movin on up */ = *itr;
+    itr = childList.erase(itr);
+    
+    // OPTIMIZATION:  can we use an iterator to remember the location where we left off???
+    --itr;
+    while( itr != childList.begin() )
+      {
+        eval = getNodeEval(*itr);
+        if (new_score + eval->complexity >= eval->score) {
+          itr++;
+          break;
+        }
+        --itr;
+      }
+    itr = childList.insert(itr, jettsonNode);
+    prev_score = new_score; // OPTIMIZATION: move forward all the way to where we left off.
+    ++itr;
+  }
+  return childNodeWithBestEval;
+}
 
 qComputationTreeNodeId qComputationTree::getBestScoringChild
 (qComputationTreeNodeId node) const
 // Return best (i.e. lowest, since we're interested in opponent) score
 {
-  return nodeHeap.at(node).childWithBestEval;
+  if (!node)
+    return qComputationTreeNode_invalid;
+
+  const qComputationTreeNodeList* childList = this->getNodeChildList(node);
+
+  qComputationTreeNodeListConstIterator itr(childList->begin());
+  qComputationTreeNodeListConstIterator end(childList->end());
+
+  if (itr == end)
+    return qComputationTreeNode_invalid;
+
+  qComputationTreeNodeId childWithBestEval = *itr;
+  gint16                         bestScore = nodeHeap.at(childWithBestEval).eval->score;
+
+  while (itr != end) {
+    if (nodeHeap.at(*itr).eval->score < bestScore) {
+      childWithBestEval = *itr;
+      bestScore = nodeHeap.at(childWithBestEval).eval->score;
+    }
+    ++itr;
+  }
+  g_assert(nodeHeap.at(childWithBestEval).eval->score <= nodeHeap.at(getNodeChildList(node)->front()).eval->score);
+  g_assert(nodeHeap.at(childWithBestEval).eval->score <= nodeHeap.at(getNodeChildList(node)->back()).eval->score);
+  return childWithBestEval;
 }
+
 
 qComputationTreeNodeId qComputationTree::getNodeParent
 (qComputationTreeNodeId node) const
@@ -126,31 +200,6 @@ void qComputationTree::setNodePosInfo
   nodeHeap.at(node).posInfo = posInfo;
 }
 
-void qComputationTree::resetBestChild
-(qComputationNode &n)
-{
-  std::list<qComputationTreeNodeId>::iterator itr(n.childNodes.begin());
-  if (itr == n.childNodes.end())
-    n.childWithBestEval = 0;
-  else {
-    n.childWithBestEval = *itr;
-    gint16 bestScore = nodeHeap.at(*itr).eval->score;
-
-    while (itr != n.childNodes.end()) {
-      if (nodeHeap.at(*itr).eval->score < bestScore) {
-        n.childWithBestEval = *itr;
-        bestScore = nodeHeap.at(*itr).eval->score;
-      }
-      /* Let's not try optimizing 'til the basic stuff works.  (???)
-       * else if (bestScore >
-       *     nodeHeap.at(*itr).eval->score + nodeHeap.at(*itr).eval->complexity)
-       *   break; // Remaining nodes can't have a score higher than bestScore
-       */
-      ++itr;
-    }
-  }
-}
-
 void qComputationTree::setNodeEval
 (qComputationTreeNodeId     node,
  const qPositionEvaluation *eval)
@@ -167,27 +216,15 @@ void qComputationTree::setNodeEval
       ++itr;
 
     parent.childNodes.erase(itr);
-    if (parent.childWithBestEval == node)
-      resetBestChild(parent);
     return;
   }
 
   // Adjust parent node's sorted child list & associated data as needed
-  if (node != 1) {
-    gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
-
-    // Modify best child, if it changed
+  if (node == 1)
+    nodeHeap.at(node).eval = eval; // Don't need to do anything else for the root node
+  else {
     qComputationNode &parent = nodeHeap.at(nodeHeap.at(node).parentNodeIdx);
-    if (!parent.childWithBestEval)
-      parent.childWithBestEval = node;
-    else if (parent.childWithBestEval == node) {
-      // Note:  I was trying to examine the old value in nodeHeap[node] and
-      // only reset if the score worsened, but can we trust that the contents
-      // of the eval pointer didn't change?  In case not, better recompute.
-      resetBestChild(parent);
-    } else if (eval->score <
-             getNodeEval(parent.childWithBestEval)->score)
-      parent.childWithBestEval = node;
+    gint32 score = static_cast<gint32>(eval->score) - eval->complexity;
 
     { // Reorder node in parent's child list according to new score
       std::list<qComputationTreeNodeId>::iterator
@@ -222,8 +259,9 @@ void qComputationTree::setNodeEval
           }
       parent.childNodes.insert(itr, node);
     }
+
+    nodeHeap.at(node).eval = eval;
   }
-  nodeHeap.at(node).eval = eval;
 }
 
 const qPositionEvaluation *qComputationTree::getNodeEval
@@ -237,6 +275,29 @@ qMove qComputationTree::getNodePrecedingMove
 {
   return nodeHeap.at(node).mv;
 }
+
+#ifdef DEBUG
+qComputationTreeNodeId qComputationTree::getNodeNthChild
+(qComputationTreeNodeId node, int n)
+{
+  if ((n >= nodeHeap.at(node).childNodes.size()) ||
+      (n < 0))
+    return qComputationTreeNode_invalid;
+
+  const qComputationTreeNodeList* childList = this->getNodeChildList(node);
+
+  qComputationTreeNodeListConstIterator itor = childList->begin();
+  qComputationTreeNodeListConstIterator end  = childList->end();
+
+  while (n--) {
+    itor++;
+    if (itor == end)
+      return qComputationTreeNode_invalid;
+  }
+
+  return *itor;
+}
+#endif
 
 
 /**************************
