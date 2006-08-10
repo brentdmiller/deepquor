@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.9 2006/07/31 06:25:50 bmiller Exp $
+// $Id: qtypes.h,v 1.10 2006/08/10 07:48:32 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1
@@ -195,7 +195,7 @@ class qMove {
   qMove(guint8 mv) { move = mv; };
 
   // Constructor for a "NULL" move;
-  qMove() { move = 0; }
+  qMove() { move = 0; };
 
   // Members for accessing wall moves
   inline bool isWallMove()      const { return   move&0x01;      };
