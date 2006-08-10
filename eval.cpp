@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.11 2006/08/02 04:08:07 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.12 2006/08/10 07:40:02 bmiller Exp $");
 
 
 /****/
@@ -350,9 +350,9 @@ qPositionInfo    *ratePositionFromNeighbors
   while(!scoreList.empty()) {
     currMove = scoreList.back();
     scoreList.pop_back();
-    if (currMove->score == qScore_won)
-      break; // This sure isn't going to improve things for us
-    if ((currMove->score - currMove->complexity) <
+    if (currMove->score == qScore_won) // This sure won't improve our score
+      continue;
+    if ((currMove->score - currMove->complexity) >
         (bestMove->score + bestMove->complexity))
       continue;
 
