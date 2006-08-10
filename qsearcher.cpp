@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.18 2006/07/31 06:25:50 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.19 2006/08/10 07:40:02 bmiller Exp $");
 
 
 /****/
@@ -46,7 +46,7 @@ class qCompTreeChildEdgeEvalIterator:public qEvalIterator {
 private:
   qComputationTree *compTree;
   qComputationTreeNodeId nodeId;
-  qComputationTreeNodeListIterator edgeItor;
+  qComputationTreeNodeListConstIterator edgeItor;
 
 public:
   // Walks through position in a qCompTree node
@@ -179,7 +179,6 @@ qSearcher::iSearch
 {
   gint8 current_depth = 0;
   guint32 positionsEvaluated = 0;
-  qMove   bestMove;
   milliSecondTimer msTimer;
 
   // Figure out how long to think
@@ -210,6 +209,9 @@ qSearcher::iSearch
 
 
   // Go into a loop refining our evaluation until it's good enough
+  qComputationTreeNodeId     bestPosId;
+  qPositionEvaluation const *bestEval;
+  qMove                      bestMove;
 
   while (1) {
     // Check criteria for if we've done enough to decide on a move
@@ -235,15 +237,9 @@ qSearcher::iSearch
       }
     }
 
-    // Find current top-scoring move
-    qPositionEvaluation const *bestEval;
-    {
-      qComputationTreeNodeId bestPosId =
-        computationTree.getBestScoringChild(currentTreeNode);
-
-      bestMove = computationTree.getNodePrecedingMove(bestPosId);
-      bestEval = computationTree.getNodeEval(bestPosId);
-    }
+    bestPosId = computationTree.sortNodeChildList(currentTreeNode);
+    bestEval  = computationTree.getNodeEval(bestPosId);
+    bestMove  = computationTree.getNodePrecedingMove(bestPosId);
 
     // 2. Is top move complexity 0 forced loss for opponent?
     // Yes: make best move
@@ -285,9 +281,9 @@ qSearcher::iSearch
       int n=0;
 
       if (slop) {
-        qComputationTreeNodeListIterator childItor =
+        qComputationTreeNodeListConstIterator childItor =
           computationTree.getNodeChildList(currentTreeNode)->begin();
-        qComputationTreeNodeListIterator childListEnd = 
+        qComputationTreeNodeListConstIterator childListEnd = 
           computationTree.getNodeChildList(currentTreeNode)->end();
 	for (;
 	     childItor != childListEnd;
@@ -300,11 +296,11 @@ qSearcher::iSearch
 	    curEval = computationTree.getNodeEval(curPosId);
 
 	    if (curEval->score >= scoreThresh + curEval->complexity)
-	      break; // No more contendors
+	      break; // No more contenders
 
 	    if (curEval->complexity > slop) {
 	      worthRefining = TRUE;
-	      break; // 
+	      break;
 	    }
 	  }
 
@@ -321,7 +317,7 @@ qSearcher::iSearch
       //   No: Further evaluate best move (How do we implement this???)
       if (n <= 1) // If we already know about >1 contendor, skip this check
       {  
-        qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+        const qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
         if (c->size() < 2)
           break;
 	curPosId = *(++c->begin());
@@ -347,7 +343,6 @@ qSearcher::iSearch
 	       player2move,
 	       POSITIONS_PER_DIVE,
 	       positionsEvaluated);
-
   }
 
   // Time to return our best move
@@ -476,7 +471,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
       }
 
       qComputationTreeNodeId next_position_id;
-      qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+      const qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
 
       // Must copy list because score updates will alter the original
       qComputationTreeNodeList tmpList(*c);
@@ -581,7 +576,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	qPositionEvaluation const *curEval;
 
 	bestMoveId = contendingMoveId =
-	  computationTree.getBestScoringChild(currentTreeNode);
+	  computationTree.sortNodeChildList(currentTreeNode); // OPTIMIZATION: move sort outside of loop???
 	g_assert(bestMoveId); // How'd we get in a position with no moves?
 
 	bestEval = computationTree.getNodeEval(bestMoveId);
@@ -595,9 +590,9 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 
 	// Skim through contendors to pick the best one to refine,
 	guint8 n=0;
-        qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
-        qComputationTreeNodeListIterator itr = c->begin();
-        qComputationTreeNodeListIterator childListEnd = c->end();
+        const qComputationTreeNodeList *c = computationTree.getNodeChildList(currentTreeNode);
+        qComputationTreeNodeListConstIterator itr = c->begin();
+        qComputationTreeNodeListConstIterator childListEnd = c->end();
 
         for (;
              itr != childListEnd;
@@ -608,7 +603,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	      continue;
 
 	    curEval = computationTree.getNodeEval(curMoveId);
-	    if (curEval->score >= scoreThresh+ curEval->complexity)
+	    if (curEval->score >= scoreThresh + curEval->complexity)
 	      break; // No more contendors--we've fallen below the threshold
 
 	    // Pick whichever contending move has highest complexity???
