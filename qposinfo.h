@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposinfo.h,v 1.7 2006/07/18 06:55:33 bmiller Exp $
+// $Id: qposinfo.h,v 1.8 2006/08/11 07:48:46 bmiller Exp $
 
 #ifndef INCLUDE_posinfo_h
 #define INCLUDE_posinfo_h 1
@@ -27,11 +27,12 @@ typedef struct _qPositionEvaluation {
   //! guint8  demand;       // Rating of how significant this position is
 } qPositionEvaluation;
 
-// Maximum complexity
-#define qComplexity_max  ((guint16)0xffff)
-
 #define qScore_won   ((gint16)0x7fff)
 #define qScore_lost  ((gint16)-0x7fff)
+
+// Maximum complexity
+// Not too big or unknown positions would outscore won/lost positions
+#define qComplexity_max  ((guint16)0x7ffe)
 
 // Useful, for example, in a line of thinking that repeats
 extern const qPositionEvaluation *positionEval_even;
