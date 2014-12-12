@@ -1,6 +1,7 @@
 #include "qtypes.h"
 #include "qposhash.h"
 #include "qmovstack.h"
+#include <stdio.h>
 
 void dumpPos(const qPosition *pos)
 {

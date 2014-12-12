@@ -2,6 +2,7 @@
 #include "qposhash.h"
 #include "qmovstack.h"
 #include "qsearcher.h"
+#include <stdio.h>
 
 void dumpSituation(qMoveStack *movStack)
 {
