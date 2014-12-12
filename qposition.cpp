@@ -9,8 +9,9 @@
 
 #include "qposition.h"
 #include "parameters.h"
+#include <stdio.h>
 
-IDSTR("$Id: qposition.cpp,v 1.7 2006/07/23 04:29:56 bmiller Exp $");
+IDSTR("$Id: qposition.cpp,v 1.8 2014/12/12 21:20:21 bmiller Exp $");
 
 
 /****/
@@ -131,4 +132,78 @@ guint16 qPosition::hashFunc
   // 16 bytes are well mixed.
   mixer ^= mixer>>16;
   return (guint16)(mixer%POSITION_HASH_BUCKETS);
+}
+
+void qPosition::dump
+(/* FILE *FH */) const
+{
+	FILE *FH = stdout;
+
+        const char *horzontal_legend = "          A   B   C   D   E   F   G   H   I\n";
+        const char *horzontal_leg2 =   "           A.5 B.5 C.5 D.5 E.5 F.5 G.5 H.5\n";
+        const char *horzontal_delim  = "            |   |   |   |   |   |   |   |\n";
+        const char *horzontal_border = "        +-----------------------------------+\n";
+
+
+        fputs(horzontal_leg2, FH);
+        fputs(horzontal_legend, FH);
+        fputs(horzontal_delim, FH);
+        fputs(horzontal_border, FH);
+
+	int x, y;
+	for (y=8; y >= 0; )
+	{
+          fprintf(FH, "     %d  |", y);
+          for (x=0; x<=8; x++)
+	  {
+	    if (x == getWhitePawn().x() &&
+	        y == getWhitePawn().y())
+              fprintf(FH, " W ");
+	    else if (x == getBlackPawn().x() &&
+	        y == getBlackPawn().y())
+              fprintf(FH, " B ");
+	    else
+              fprintf(FH, "   ");
+            if (x < 8) {
+              if (isBlockedByWall(x, y, RIGHT))
+                fprintf(FH, "|");
+              else
+                fprintf(FH, " ");
+            }
+	  }
+          fprintf(FH, "| %d\n", y);
+
+	  --y;
+          if (y >= 0) {
+            fprintf(FH, "%d.5   --|", y);
+
+            for (x=0; x<=8; x++)
+            {
+              if (isBlockedByWall(x, y, UP))
+                fprintf(FH, "---");
+              else
+                fprintf(FH, "   ");
+              if (x < 8) {
+                if (wallAt(ROW, y, x))
+                  fprintf(FH, "-");
+                else if (wallAt(COL, x, y))
+                  fprintf(FH, "|");
+                else
+                  fprintf(FH, "+");
+              }
+            }
+            fprintf(FH, "|--   %d.5\n", y);
+          }
+	}
+
+        fputs(horzontal_border, FH);
+        fputs(horzontal_delim, FH);
+        fputs(horzontal_legend, FH);
+        fputs(horzontal_leg2, FH);
+
+	// fprintf(FH, " White pawn: (%d, %d)\n", getWhitePawn().x(), getWhitePawn().y());
+	fprintf(FH, " White walls left: %d\n", numWhiteWallsLeft());
+
+	// fprintf(FH, " Black pawn: (%d, %d)\n", getBlackPawn().x(), getBlackPawn().y());
+	fprintf(FH, " Black walls left: %d\n", numBlackWallsLeft());
 }

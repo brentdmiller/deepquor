@@ -19,3 +19,6 @@ g++ $CFLAGS -c -I.. testthink.cpp
 g++ $CFLAGS -o think testthink.o ../qcomptree.o ../qsearcher.o ../eval.o ../qdijkstra.o ../getmoves.o ../qposinfo.o ../qmovstack.o ../qposhash.o ../qposition.o ../qtypes.o
 
 # -Wl,--stack,128000000
+
+#g++ $CFLAGS -c -I.. t.cpp
+#g++ $CFLAGS -o a.out t.o ../qcomptree.o ../qsearcher.o ../eval.o ../qdijkstra.o ../getmoves.o ../qposinfo.o ../qmovstack.o ../qposhash.o ../qposition.o ../qtypes.o

@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2005
+ * Copyright (c) 2005-2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qtypes.h,v 1.10 2006/08/10 07:48:32 bmiller Exp $
+// $Id: qtypes.h,v 1.11 2014/12/12 21:20:21 bmiller Exp $
 
 #ifndef INCLUDE_qtypes_h
 #define INCLUDE_qtypes_h 1

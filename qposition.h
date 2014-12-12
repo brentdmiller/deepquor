@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qposition.h,v 1.11 2006/07/24 03:34:45 bmiller Exp $
+// $Id: qposition.h,v 1.12 2014/12/12 21:20:21 bmiller Exp $
 
 #ifndef INCLUDE_qposition_h
 #define INCLUDE_qposition_h 1
@@ -123,16 +123,21 @@ class qPosition {
   inline void applyPawnMove(qPlayer, qDirection);
   inline void putWall(bool, guint8, guint8);
   inline void putWall(qMove);
-
-  bool qPosition::wallAt(bool HorV, guint8 row, guint8 x)
-  { return (HorV == ROW) ? };???
-  bool qPosition::wallAt(qMove)
+  bool qPosition::wallAt(qMove) const
     {};???
 #endif
+
+  bool wallAt(bool HorV, guint8 rowColNo, guint8 posNo) const
+  { return (HorV == ROW) ?
+           (row_walls[rowColNo] & (1<<posNo)) :
+           (col_walls[rowColNo] & (1<<posNo));
+  };
 
   // ??? This fails to account for alignment holes, & isn't safe
   inline bool operator== (const qPosition& other) const
   { return (memcmp(this, &other, sizeof(*this)) == 0); }
+
+  void dump(/* FILE *FH */) const; // Dumps the position to FH
 
  private:
   PACK_DECL(guint8 row_walls[8]);

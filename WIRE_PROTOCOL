@@ -1,5 +1,5 @@
  ************************************************************
- * Copyright (c) 2005
+ * Copyright (c) 2006
  *    Brent Miller and Charles Morrey.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE_DOCS file for terms.
@@ -10,15 +10,14 @@ Quoridor Internet Game Playing Protocol Specification
 v0.1
 November 9, 2005
 Authors:
-	Brad Morrey
 	Brent Miller
-$Id: WIRE_PROTOCOL,v 1.5 2005/11/11 07:55:33 bmiller Exp $
+$Id: WIRE_PROTOCOL,v 1.6 2014/12/12 21:18:08 bmiller Exp $
 
 
 
 === References
 
-Here is decent write-up describing the protocol used for most
+Here is a decent write-up describing the protocol used for most
 Internet Chess Servers (ICS).
 http://www.tim-mann.org/xboard/engine-intf.html
 
@@ -50,10 +49,8 @@ a human to type into a telnet window.
 Xerces would also be portable, but perhaps less so, would require
 Xerces libraries, and would make it harder for a human to "wing it"
 with telnet.  But it would have the advantage that if future commands
-required binary data or multiple lines, they would be handles by
+required binary data or multiple lines, they would be handled by
 serialization mechanisms provided by Xerces.
-
-Brad, between those two, do you have a preference???
 
 Since we're writing over sockets, there has to be some delimiter so that
 we know when we've received an entire encoded command.  For CSV, probably
@@ -170,6 +167,31 @@ use ".5" coordinates to designate the center of a wall, with a "-" or "|"
 infixed in the coordinates to designate whether the wall is verticle or
 horizonal (i.e. C.5-3.5  or D.5|1.5)
 
+          A   B   C   D   E   F   G   H   I
+            |   |   |   |   |   |   |   |
+        +-----------------------------------+
+     9  | 72              X               81|  9       
+      --|   +   +   +   +   +   +   +   +   |--   8.5
+     8  |       |                           |  8  
+      --|   +   |   +   +-------+-------+   |--   7.5
+     7  |       |       |                   |  7  
+      --|-------+-------|-------+-------+   |--   6.5
+     6  |               |                   |  6       
+      --|   +   +   +   +   +   +   +   +   |--   5.5
+     5  |               |                   |  5  
+      --|   +   +   +   |   +   +   +-------|--   4.5
+     4  |               |                   |  4       
+      --|   +   +   +   +-------+   +   +   |--   3.5
+     3  |                                   |  3 
+      --|   +   +   +   +   +   +   +   +   |--   2.5
+     2  |                       |           |  2 
+      --|   +   +   +   +   +   |   +   +   |--   1.5
+     1  | 1               O     |         9 |  1       
+        +-----------------------------------+
+            |   |   |   |   |   |   |   |
+          A | B | C | D | E | F | G | H | I
+           A.5 B.5 C.5 D.5 E.5 F.5 G.5 H.5
+
 
 Alternate scheme:
 Make the "in-between rows & columns A-H and 1-8, and number the squares.
@@ -188,7 +210,7 @@ alternative was to re-use A-I and 1-9 coordinates, so they'd be used for
 both wall placements and pawn moves.
 
 
-            A   B   C   D   E   F   G   H            
+            A   B   C   D   E   F   G   H
             |   |   |   |   |   |   |   |
         +-----------------------------------+
         | 72              X               81|          
@@ -215,7 +237,7 @@ both wall placements and pawn moves.
 I examined the notation used by Richard's Quoridor Server
 (http://www.gamerz.net/~pbmserv/quoridor.html), but decided that the
 notation it used was not robust enough.  For example, pawn moves are always
-relative, so it would be hard to detect an inconcistent state if both
+relative, so it would be hard to detect an inconsistent state if both
 ends of the connection did not agree on a pawn location.  And there's
 no verification of whose piece or wall is moving.  So I modified the
 notation slightly.

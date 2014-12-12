@@ -16,7 +16,7 @@
 #include "getmoves.h"
 #include "parameters.h"
 
-IDSTR("$Id: eval.cpp,v 1.12 2006/08/10 07:40:02 bmiller Exp $");
+IDSTR("$Id: eval.cpp,v 1.13 2014/12/12 21:20:21 bmiller Exp $");
 
 
 /****/
@@ -46,12 +46,12 @@ inline static gint16 WALL_SCORE(guint8 p, guint8 o)
 #endif
 
 #ifdef WALL_COMPLEXITY_FUDGE
-static guint8 wallComplexityFudge[][11] = WALL_COMPLEXITY_FUDGE;
-inline static gint16 WALL_COMPLEXITY(guint8 p, guint8 o)
+static guint16 wallComplexityFudge[][11] = WALL_COMPLEXITY_FUDGE;
+inline static guint16 WALL_COMPLEXITY(guint8 p, guint8 o)
   { return wallComplexityFudge[p][o]; };
 #else
 #define WALL_COMPLEXITY(p, o) (PLY_SCORE*((p)+(o)))
-inline static gint16 WALL_COMPLEXITY(guint8 p, guint8 o)
+inline static guint16 WALL_COMPLEXITY(guint8 p, guint8 o)
   { return PLY_SCORE*(p+o); };
 #endif
 
@@ -347,6 +347,8 @@ qPositionInfo    *ratePositionFromNeighbors
   }
 
   scoreList.pop_front();
+  newEval->complexity = (newEval->complexity+1)/2; // half for each ply???
+
   while(!scoreList.empty()) {
     currMove = scoreList.back();
     scoreList.pop_back();

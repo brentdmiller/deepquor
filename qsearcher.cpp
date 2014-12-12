@@ -11,7 +11,7 @@
 #include <memory>
 #include <sys/time.h>
 
-IDSTR("$Id: qsearcher.cpp,v 1.19 2006/08/10 07:40:02 bmiller Exp $");
+IDSTR("$Id: qsearcher.cpp,v 1.20 2014/12/12 21:20:21 bmiller Exp $");
 
 
 /****/
@@ -356,6 +356,11 @@ qSearcher::iSearch
   // for score==0, B is 0
   // for score<0, B is positive and related to complexity*log(depth)
   //     or sqrt(depth)   or maybe complexity*log(computations)
+  if (!bestMove.exists()) {
+    bestPosId = computationTree.getBestScoringChild(1);
+    g_assert(bestPosId);
+    bestMove = computationTree.getNodePrecedingMove(bestPosId);
+  }
   g_assert(bestMove.exists());
   return bestMove;
 }
@@ -603,7 +608,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
 	      continue;
 
 	    curEval = computationTree.getNodeEval(curMoveId);
-	    if (curEval->score >= scoreThresh + curEval->complexity)
+	    if (curEval->score > scoreThresh + curEval->complexity)
 	      break; // No more contendors--we've fallen below the threshold
 
 	    // Pick whichever contending move has highest complexity???

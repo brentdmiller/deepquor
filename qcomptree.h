@@ -5,7 +5,7 @@
  * See the COPYRIGHT_NOTICE file for terms.
  */
 
-// $Id: qcomptree.h,v 1.10 2006/08/10 07:48:32 bmiller Exp $
+// $Id: qcomptree.h,v 1.11 2014/12/12 21:20:21 bmiller Exp $
 
 #ifndef INCLUDE_comptree_h
 #define INCLUDE_comptree_h 1
@@ -89,7 +89,7 @@ public:
   qPositionInfo           *posInfo;
 
 
-  qComputationNode::qComputationNode()
+  qComputationNode()
   :parentNodeIdx(qComputationTreeNode_invalid),
    childNodes(0),
    posInfo(NULL)
@@ -97,13 +97,13 @@ public:
        this->mv = moveNull;
        this->eval = NULL;
     };
-  qComputationNode::~qComputationNode() {;};
+  ~qComputationNode() {;};
 };
 
 class qComputationTree {
  public:
-  qComputationTree::qComputationTree();
-  qComputationTree::~qComputationTree();
+  qComputationTree();
+  ~qComputationTree();
 
   // Sets all nodes to uninitialized
   void initializeTree();
@@ -202,7 +202,7 @@ class qComputationTree {
       maxNode = nodeHeap.size() - 1;
       return TRUE;
     };
-  void qComputationTree::resetBestChild(qComputationNode &n);
+  void resetBestChild(qComputationNode &n);
 };
 
 extern const qComputationNode emptyNode;

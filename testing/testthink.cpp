@@ -3,22 +3,12 @@
 #include "qmovstack.h"
 #include "qsearcher.h"
 
-void dumpPos(const qPosition *pos)
-{
-	printf(" White pawn: (%d, %d)\n",
-		pos->getWhitePawn().x(), pos->getWhitePawn().y());
-	printf(" Black pawn: (%d, %d)\n",
-		pos->getBlackPawn().x(), pos->getBlackPawn().y());
-	printf(" White walls left: %d\n", pos->numWhiteWallsLeft());
-	printf(" Black walls left: %d\n", pos->numBlackWallsLeft());
-}
-
 void dumpSituation(qMoveStack *movStack)
 {
 	printf("Player to move: %s\n",
 		movStack->getPlayer2Move().isWhite() ? "white" : "black");
 	printf("Current position:\n");
-	dumpPos(movStack->getPos());
+	movStack->getPos()->dump();
 }
 
 void printMove(qMove mv)
@@ -75,8 +65,8 @@ qMove doTest
 			1,	// keep thinking until beyond
 			2,	// brute force search this many plies
 			5,	// don't need to refine beyond this
-			3600*24*1000,// Hard limit on our avail. time
-			3600*16*1000);// Start relaxing criteria after this
+			/*3600**/24*1000,// Hard limit on our avail. time
+			/*3600**/16*1000);// Start relaxing criteria after this
 
   printf("\nRETURNED MOVE FOR %s:\n", whoseMove.isWhite() ? "WHITE" : "BLACK");
   printMove(mv);
@@ -96,6 +86,13 @@ int main
   printf("case 1 (expect UP)\n");
   qPosition testPos(NULL, NULL, // Walls
 		    qSquare(1,7), qSquare(4,8), // Pawns
+		    0, 0); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 1A (expect UP)\n");
+  testPos = qPosition (NULL, NULL, // Walls
+		    qSquare(1,7), qSquare(4,1), // Pawns
 		    0, 0); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
@@ -174,6 +171,20 @@ int main
   testPos = qPosition (NULL, testcols2, // Walls
 		    qSquare(1,6), qSquare(4,4), // Pawns
 		    1, 1); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 11 (expect UP+UP)\n");
+  testPos = qPosition (NULL, NULL, // Walls
+		    qSquare(31), qSquare(40), // Pawns
+		    1, 1); // Walls remaining
+  doTest(&testPos,
+	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
+
+  printf("case 12 (expect ?)\n");
+  testPos = qPosition (NULL, NULL, // Walls
+		    qSquare(4), qSquare(76), // Pawns
+		    10, 10); // Walls remaining
   doTest(&testPos,
 	 qPlayer(qPlayer::WhitePlayer)); // Whose turn
 

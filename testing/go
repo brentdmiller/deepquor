@@ -1,0 +1,11 @@
+#!/bin/sh
+
+DEBUGFLAGS="-g -O0 -m32 -DDEBUG"
+CFLAGS="-fpic $DEBUGFLAGS"
+
+
+g++ $CFLAGS -c -I.. onemove.cpp
+g++ $CFLAGS -o onemove onemove.o ../qcomptree.o ../qsearcher.o ../eval.o ../qdijkstra.o ../getmoves.o ../qposinfo.o ../qmovstack.o ../qposhash.o ../qposition.o ../qtypes.o
+
+./onemove
+

@@ -1,6 +1,6 @@
  ************************************************************
- * Copyright (c) 2005-2006
- *    Brent Miller and Charles Morrey.  All rights reserved.
+ * Copyright (c) 2006-2007
+ *    Brent Miller.  All rights reserved.
  *
  * See the COPYRIGHT_NOTICE_DOCS file for terms.
  ************************************************************
@@ -17,13 +17,13 @@ In addition, qtype.cpp defines a few constants that are available for use
 
 The larger data structures and interfaces are as follows:
   qPosition - qposition.[h,cpp]
-  * An encoded position intended to use as few bytes as possible
+  * An encoded position; encoding intended to use as few bytes as possible
 
-  qPositionInfo - posinfo.[h,cpp]
-  * Holds all cached info known about a position.
+  qPositionInfo - qposinfo.[h,cpp]
+  * Holds all information that gets cached regarding a position.
   * positionHashes point to these
 
-  qPositionHash - poshash.[h,cpp]
+  qPositionHash - qposhash.[h,cpp]
   * Structure for looking up/storing positions we've seen & associated data.
     This holds evaluations of positions for reference when searching for
     not just the current move but for future moves as well.
@@ -34,7 +34,7 @@ The larger data structures and interfaces are as follows:
     while searching for a move, then discarded and rebuilt when searching
     for the next move.
 
-  qMoveStack - movstack.[h,cpp]
+  qMoveStack - qmovstack.[h,cpp]
   * structure for storing sequences of moves under evaluation
   * For each frame, allows push, pop & peek of (playerId, qMove, qPosition)
   * In addition to storing pushed & popped info, this class also provides
@@ -180,10 +180,30 @@ TODO:
 4. Evaluate uses of deque and see if any can/should be replaced with list.
    deque has contant random-access (like vector).  A list is a doubly-linked
    list, which is what I really neede most places that I used deque.
+5. g_assert(bestMove.exists()) assertion at end of iSearch() in qsearcher.cpp failed.
+
 
 OPTIMIZATIONS:
-5. scanDeeper (depth <0 and maybe >0 also) walks nodes, eventually calling
+0. addNodeChild (and maybe setNodeEval) in qcomptree.cpp doesn't need to sort
+   Just push onto the back, and when we do, switch the calling code from
+   using a reverse iterator to a forward iterator.
+1. scanDeeper (depth <0 and maybe >0 also) walks nodes, eventually calling
    scanDeeper(depth==0) for leaf nodes.  It disregards the rvals of these
    leaf nodes, and then calls reatePositionFromNeighbors.  Perhaps it could
    get the rating directly from the rvals of previous calls.
-
+2. Reset the qComputationTree used by scanDeeper in applyMove() (rather
+   than in iSearch() & think()), so calls to think() don't lose context
+   every time.
+3. Examine callse to scanDeeper, & make sure that any time a won position
+   is returned we pass it back immediately rather than continuing to evaluate
+   positions.  ???  This might not be worth doing.  The extra comparison gets
+   run for every examined position, costing a bit over the course of
+   deep analyses; it only saves time in forced situations, which generally
+   need no acceleration.
+4. Instead of constructing a list of moves, and then insert-sorting each move
+   into the list as we evaluate the moves (involving a mostly worst-case
+   scenario of putting moves at the end behind all the moves with "inifinite"
+   complexity), when we initially construct a list of moves we should evaluated
+   them all and then do a once-over sort. (qsearcher.h)
+5. in scanDeeper (qsearcher.cpp), when aborting a dive because a position is
+   found known won/lost, avoid costly call to ratePositionFromNeighbors()
