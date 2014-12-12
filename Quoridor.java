@@ -1,24 +1,86 @@
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.GridLayout;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
+import java.util.*;
+import static java.util.Arrays.*;
 
 public class Quoridor extends JFrame implements MouseListener, ActionListener
 {
   static final int ROWS = 9, COLS = 9;
   static final int MDIM = 50, mDIM = 10;
+  static final String[] NAMES = {"W", "B"};
 
+
+  int turn = 0;
+
+  JButton[] pawns = new JButton[2];
 
   JButton[][] squares = new JButton[ROWS][COLS];
   JButton[][] cwalls = new JButton[ROWS-1][COLS-1];
   JButton[][][] vwalls = new JButton[ROWS][COLS-1][2];
   JButton[][][] hwalls = new JButton[ROWS-1][COLS][2];
 
-  private Point getSquare(Object source) {
-    for (int i = 0; i < ROWS; ++i) {
-      for (int j = 0; j < COLS; ++j) {
+  private void setPawn(int turn, JButton square) {
+    if(pawns[turn] != null) {
+      pawns[turn].setText("");
+    }
+    pawns[turn] = square;
+    pawns[turn].setText(NAMES[turn]);
+  }
+
+  private void setVerticalWall(int r, int c, int h) {
+    vwalls[r + 2 *h - 1][c][h].setBackground(Color.GRAY);
+    vwalls[r + 2 *h - 1][c][1 - h].setBackground(Color.GRAY);
+    vwalls[r][c][h].setBackground(Color.GRAY);
+    vwalls[r][c][1-h].setBackground(Color.GRAY);
+    cwalls[r + h - 1][c].setBackground(Color.GRAY);
+  }
+
+  private void setHorizontalWall(int r, int c, int h) {
+    hwalls[r][c + 2 * h - 1][h].setBackground(Color.GRAY);
+    hwalls[r][c + 2 * h - 1][1 - h].setBackground(Color.GRAY);
+    hwalls[r][c][h].setBackground(Color.GRAY);
+    hwalls[r][c][1-h].setBackground(Color.GRAY);
+    cwalls[r][c + h - 1].setBackground(Color.GRAY);
+  }
+
+
+
+  private List<Integer> getSquare(Object source) {
+    for (int i = 0; i < squares.length; ++i) {
+      for (int j = 0; j < squares[i].length; ++j) {
         if (squares[i][j] == source) {
-          return new Point(i, j);
+          return asList(i, j);
+        }
+      }
+    }
+    return null;
+  }
+
+  private List<Integer> getVerticalWall(Object source) {
+    for (int i = 0; i < vwalls.length; ++i) {
+      for (int j = 0; j < vwalls[i].length; ++j) {
+        for (int k = 0; k < vwalls[i][j].length; ++k) {
+          if (vwalls[i][j][k] == source) {
+            return asList(i, j, k);
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private List<Integer> getHorizontalWall(Object source) {
+    for (int i = 0; i < hwalls.length; ++i) {
+      for (int j = 0; j < hwalls[i].length; ++j) {
+        for (int k = 0; k < hwalls[i][j].length; ++k) {
+          if (hwalls[i][j][k] == source) {
+            return asList(i, j, k);
+          }
         }
       }
     }
@@ -93,21 +155,21 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     }
     layout.setHorizontalGroup(hsGroup);
     layout.setVerticalGroup(vsGroup);
-
-    squares[0][COLS / 2].setText("B");
-    squares[ROWS-1][COLS / 2].setText("W");
-
+    setPawn(0, squares[ROWS-1][COLS / 2]);
+    setPawn(1, squares[0][COLS / 2]);
     setContentPane(pane);
   }
 
   private Quoridor()
   {
+    setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     init();
     setVisible(true);
   }
 
   public void paint(Graphics g)
   {
+    super.paint(g);
   }
 
   public void mouseClicked(MouseEvent event) {}
@@ -117,11 +179,26 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   public void mouseExited(MouseEvent event) {}
 
   public void actionPerformed(ActionEvent event) {
-    Point square = getSquare(event.getSource());
-    if (square != null) {
-      System.out.println(square);
-    } else {
-      System.out.println("Action performed");
+    try {
+      List<Integer> square = getSquare(event.getSource());
+      List<Integer> vwall = getVerticalWall(event.getSource());
+      List<Integer> hwall = getHorizontalWall(event.getSource());
+      if (square != null) {
+        setPawn(turn, (JButton) event.getSource());
+        System.out.println(9 * (8 - square.get(0)) + square.get(1) + 1);
+      } else if (vwall != null) {
+        setVerticalWall(vwall.get(0), vwall.get(1), vwall.get(2));
+        System.out.println("|" + (9 - vwall.get(0) - vwall.get(2)) + "" + (char)(vwall.get(1) + 'A'));
+      } else if (hwall != null) {
+        setHorizontalWall(hwall.get(0), hwall.get(1), hwall.get(2));
+        System.out.println("-" + (8 - hwall.get(0)) + "" + (char)(hwall.get(1) + hwall.get(2) + 'A'));
+      } else {
+        System.out.println("Unidentified action");
+        turn = 1 - turn;
+      }
+      turn = 1 - turn;
+    } catch (ArrayIndexOutOfBoundsException aex) {
+//      throw aex;
     }
   }
 
