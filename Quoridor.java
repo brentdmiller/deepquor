@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.util.*;
 import static java.util.Arrays.*;
+import java.io.*;
 
 public class Quoridor extends JFrame implements MouseListener, ActionListener
 {
@@ -205,6 +206,28 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   public static void main(String[] args) throws Throwable
   {
     UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-    new Quoridor();
+    Quoridor q = new Quoridor();
+    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+    for (String line = br.readLine(); line != null; line = br.readLine()) {
+      try {
+        if (line.charAt(0) == '-') {
+          int row = 7 - (line.charAt(1) - '1');
+          int col = line.charAt(2) - 'A';
+          q.setHorizontalWall(row, col, 1);
+        } else if (line.charAt(0) == '|') {
+          int row = 7 - (line.charAt(1) - '1');
+          int col = line.charAt(2) - 'A';
+          q.setVerticalWall(row, col, 1);
+        } else {
+          int value = Integer.parseInt(line) - 1;
+          int row = 8 - value / 9;
+          int col = value % 9;
+          q.setPawn(q.turn, q.squares[row][col]);
+        }
+        q.turn = 1 - q.turn;
+      } catch (Exception ex) {
+        throw ex;
+      }
+    }
   }
 }
