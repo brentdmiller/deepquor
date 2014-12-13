@@ -11,6 +11,7 @@ import java.io.*;
 
 public class Quoridor extends JFrame implements MouseListener, ActionListener
 {
+  static final int QUADRANT = 1;
   static final int INITIAL_WALLS = 9;
   static final int ROWS = 9, COLS = 9;
   static final int MDIM = 50, mDIM = 10;
@@ -38,20 +39,20 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   }
 
   private void setVerticalWall(int r, int c, int h) {
-    vwalls[r + 2 *h - 1][c][h].setBackground(Color.GRAY);
-    vwalls[r + 2 *h - 1][c][1 - h].setBackground(Color.GRAY);
     vwalls[r][c][h].setBackground(Color.GRAY);
     vwalls[r][c][1-h].setBackground(Color.GRAY);
+    vwalls[r + 2 *h - 1][c][h].setBackground(Color.GRAY);
+    vwalls[r + 2 *h - 1][c][1 - h].setBackground(Color.GRAY);
     cwalls[r + h - 1][c].setBackground(Color.GRAY);
     --walls_left[turn];
     turn = 1 - turn;
   }
 
   private void setHorizontalWall(int r, int c, int h) {
-    hwalls[r][c + 2 * h - 1][h].setBackground(Color.GRAY);
-    hwalls[r][c + 2 * h - 1][1 - h].setBackground(Color.GRAY);
     hwalls[r][c][h].setBackground(Color.GRAY);
     hwalls[r][c][1-h].setBackground(Color.GRAY);
+    hwalls[r][c + 2 * h - 1][h].setBackground(Color.GRAY);
+    hwalls[r][c + 2 * h - 1][1 - h].setBackground(Color.GRAY);
     cwalls[r][c + h - 1].setBackground(Color.GRAY);
     --walls_left[turn];
     turn = 1 - turn;
@@ -94,22 +95,31 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     return null;
   }
 
-  private JButton square(Color bg)
+  private JButton square(Color bg, boolean actionable)
   {
     JButton square = new JButton();
     square.setBorder(new EmptyBorder(0,0,0,0));
     square.setBackground(bg);
     square.setForeground(Color.WHITE);
-    square.addActionListener(this);
+    if (actionable) {
+      square.addActionListener(this);
+    }
     return square;
   }
 
   private void initArrays()
   {
-    for(int r = 0; r < ROWS  ; ++r) for(int c = 0; c < COLS  ; ++c) squares[r][c] = square(Color.BLACK);
-    for(int r = 0; r < ROWS  ; ++r) for(int c = 0; c < COLS-1; ++c) for(int i = 0; i < 2; ++i) vwalls[r][c][i] = square(Color.WHITE);
-    for(int r = 0; r < ROWS-1; ++r) for(int c = 0; c < COLS  ; ++c) for(int i = 0; i < 2; ++i) hwalls[r][c][i] = square(Color.WHITE);
-    for(int r = 0; r < ROWS-1; ++r) for(int c = 0; c < COLS-1; ++c) cwalls[r][c] = square(Color.WHITE);
+    // Iterate over rows backwards to do 1st Quadrant (as opposed to 4th)
+    for(int r = 0  ; r < ROWS; ++r) {
+      for(int c = 0; c < COLS  ; ++c) {
+        squares[r][c] = square(Color.BLACK, true);
+        for(int i = 0; i < 2; ++i) {
+          if (c < COLS - 1) vwalls[r][c][i] = square(Color.WHITE, (c + i) * (COLS - 1 - c - i) != 0);
+          if (r < ROWS - 1) hwalls[r][c][i] = square(Color.WHITE, (r + i) * (ROWS - 1 - c - i) != 0);
+        }
+        if (r < ROWS - 1 && c < COLS - 1) cwalls[r][c] = square(Color.WHITE, false);
+      }
+    }
   }
 
   private void init()
@@ -117,29 +127,41 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     setSize(530,550);
     initArrays();
     Component[][] grid = new Component[2 * ROWS - 1][2 * COLS - 1];
+    int rp, rp2, ri, cp, cp2, ci;
 
-    for(int r = 0; r < ROWS; ++r) for(int c = 0; c < COLS  ; ++c)
-      grid[2*r][2*c] = squares[r][c];
+    for(int r = 0; r < ROWS; ++r) for(int c = 0; c < COLS  ; ++c) {
+      if (QUADRANT < 3) {
+        rp2 = (rp = ROWS - r - 1) - 1;
+        ri = 1;
+      } else {
+        rp2 = rp = r;
+        ri = 0;
+      }
 
-    for(int r = 0; r < ROWS; ++r) for(int c = 0; c < COLS-1; ++c)
-    {
-      JPanel panel = new JPanel(new GridLayout(2,1));
-      for(int i = 0; i < 2; ++i)
-        panel.add(vwalls[r][c][i]);
-      grid[2*r][2*c+1] = panel;
-    }
+      if ((QUADRANT - 1) / 2 == QUADRANT % 2) {
+        cp2 = (cp = COLS - c - 1) - 1;
+        ci = 1;
+      } else {
+        cp2 = cp = c;
+        ci = 0;
+      }
 
-    for(int r = 0; r < ROWS-1; ++r) for(int c = 0; c < COLS; ++c)
-    {
-      JPanel panel = new JPanel(new GridLayout(1,2));
-      for(int i = 0; i < 2; ++i)
-        panel.add(hwalls[r][c][i]);
-      grid[2*r+1][2*c] = panel;
-    }
-
-    for(int r = 0; r < ROWS-1; ++r) for(int c = 0; c < COLS-1; ++c)
-    {
-      grid[2*r+1][2*c+1] = cwalls[r][c];
+      grid[2*rp][2*cp] = squares[r][c];
+      if (c < COLS - 1) {
+        JPanel panel = new JPanel(new GridLayout(2,1));
+        panel.add(vwalls[r][c][ri]);
+        panel.add(vwalls[r][c][1-ri]);
+        grid[2*rp][2*cp2+1] = panel;
+      }
+      if (r < ROWS - 1) {
+        JPanel panel = new JPanel(new GridLayout(1,2));
+        panel.add(hwalls[r][c][ci]);
+        panel.add(hwalls[r][c][1-ci]);
+        grid[2*rp2+1][2*cp] = panel;
+      }
+      if (c < COLS -1 && r < ROWS - 1) {
+        grid[2*rp2+1][2*cp2+1] = cwalls[r][c];
+      }
     }
        
     JPanel pane = new JPanel();
@@ -162,8 +184,8 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     }
     layout.setHorizontalGroup(hsGroup);
     layout.setVerticalGroup(vsGroup);
-    setPawn(ROWS-1, COLS / 2);
     setPawn(0, COLS / 2);
+    setPawn(ROWS-1, COLS / 2);
     setContentPane(pane);
   }
 
@@ -193,18 +215,18 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       int old_turn = turn;
       if (square != null) {
         setPawn(square.get(0), square.get(1));
-        System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], 9 * (8 - square.get(0)) + square.get(1) + 1, walls_left[old_turn]));
+        System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], 9 *  square.get(0) + square.get(1) + 1, walls_left[old_turn]));
       } else if (vwall != null) {
         setVerticalWall(vwall.get(0), vwall.get(1), vwall.get(2));
-        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], 9 - vwall.get(0) - vwall.get(2), vwall.get(1) + 'A', walls_left[old_turn]));
+        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], vwall.get(0) + vwall.get(2), vwall.get(1) + 'A', walls_left[old_turn]));
       } else if (hwall != null) {
         setHorizontalWall(hwall.get(0), hwall.get(1), hwall.get(2));
-        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], 8 - hwall.get(0), hwall.get(1) + hwall.get(2) + 'A', walls_left[old_turn]));
+        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], hwall.get(0) + 1, hwall.get(1) + hwall.get(2) - 1 + 'A', walls_left[old_turn]));
       } else {
-//        System.err.println("Unidentified action");
+        System.err.println("Unidentified action");
       }
     } catch (ArrayIndexOutOfBoundsException aex) {
-//      throw aex;
+      throw aex;
     }
   }
 
@@ -225,16 +247,16 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
         if (cmd[0].equals("MOVE")) {
           q.turn = cmd[1].equals("O") ? 0 : 1;
           if (cmd[2].charAt(0) == '-') {
-            int row = 7 - (cmd[2].charAt(1) - '1');
+            int row = cmd[2].charAt(1) - '1';
             int col = cmd[2].charAt(2) - 'A';
             q.setHorizontalWall(row, col, 1);
           } else if (cmd[2].charAt(0) == '|') {
-            int row = 7 - (cmd[2].charAt(1) - '1');
+            int row = cmd[2].charAt(1) - '1';
             int col = cmd[2].charAt(2) - 'A';
             q.setVerticalWall(row, col, 1);
           } else {
             int value = Integer.parseInt(cmd[2]) - 1;
-            int row = 8 - value / 9;
+            int row = value / 9;
             int col = value % 9;
             q.setPawn(row, col);
           }
@@ -262,10 +284,16 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
         } else if (cmd[0].equals("QUIT")) {
           System.exit(0);
         } else {
-          System.err.println("Unrecognized line: " + line);
+          System.out.println("ERROR");
+//          System.err.println("Unrecognized line: " + line);
         }
       } catch (Exception ex) {
-        throw ex;
+//        throw ex;
+        if (cmd.length > 0 && cmd[0].equals("MOVE")) {
+          System.out.println("MVERROR");
+        } else {
+          System.out.println("ERROR");
+        }
       }
     }
   }
