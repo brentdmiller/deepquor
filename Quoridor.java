@@ -11,12 +11,15 @@ import java.io.*;
 
 public class Quoridor extends JFrame implements MouseListener, ActionListener
 {
+  static final boolean DEBUG = false;
   static final int QUADRANT = 1;
   static final int INITIAL_WALLS = 9;
   static final int ROWS = 9, COLS = 9;
   static final int MDIM = 50, mDIM = 10;
   static final String[] NAMES = {"W", "B"};
   static final String[] PROTOVER_NAMES = {"O", "X"};
+
+  static final Color WALL_COLOR = Color.GRAY;
 
   int turn = 0;
   int[] walls_left = {INITIAL_WALLS, INITIAL_WALLS};
@@ -28,34 +31,21 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   JButton[][][] vwalls = new JButton[ROWS][COLS-1][2];
   JButton[][][] hwalls = new JButton[ROWS-1][COLS][2];
 
-  private void setPawn(int row, int col) {
-    JButton square = squares[row][col];
-    if(pawns[turn] != null) {
-      pawns[turn].setText("");
+
+  private void DEBUGF(String fmt, Object... args) {
+    if (DEBUG) {
+      System.err.println(String.format(fmt, args));
     }
-    pawns[turn] = square;
-    pawns[turn].setText(NAMES[turn]);
-    turn = 1 - turn;
   }
 
-  private void setVerticalWall(int r, int c, int h) {
-    vwalls[r][c][h].setBackground(Color.GRAY);
-    vwalls[r][c][1-h].setBackground(Color.GRAY);
-    vwalls[r + 2 *h - 1][c][h].setBackground(Color.GRAY);
-    vwalls[r + 2 *h - 1][c][1 - h].setBackground(Color.GRAY);
-    cwalls[r + h - 1][c].setBackground(Color.GRAY);
-    --walls_left[turn];
-    turn = 1 - turn;
+  private void DEBUGE(Exception ex) {
+    if (DEBUG) {
+      System.err.println(ex);
+    }
   }
 
-  private void setHorizontalWall(int r, int c, int h) {
-    hwalls[r][c][h].setBackground(Color.GRAY);
-    hwalls[r][c][1-h].setBackground(Color.GRAY);
-    hwalls[r][c + 2 * h - 1][h].setBackground(Color.GRAY);
-    hwalls[r][c + 2 * h - 1][1 - h].setBackground(Color.GRAY);
-    cwalls[r][c + h - 1].setBackground(Color.GRAY);
-    --walls_left[turn];
-    turn = 1 - turn;
+  private int getWallsLeft() {
+    return walls_left[turn];
   }
 
   private List<Integer> getSquare(Object source) {
@@ -95,6 +85,84 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     return null;
   }
 
+  private boolean checkWalls(int row, int col, int rdir, int cdir) {
+    int dist = Math.abs(rdir) + Math.abs(cdir);
+    boolean result = false;
+    if (dist == 2) {
+      if (rdir == 0 || cdir == 0) {
+        /* Jump straight ahead */
+        rdir /= 2;
+        cdir /= 2;
+        result = checkWalls(row, col, rdir, cdir) && checkWalls(row + rdir, col + cdir, rdir, cdir) && !squares[row + rdir][col + cdir].getText().equals("");
+      } else {
+       result = 
+            !squares[row + rdir][col].getText().equals("") ? checkWalls(row, col, rdir, 0) && checkWalls(row + rdir, col, 0, cdir) && !checkWalls(row + rdir, col, rdir, 0) :
+            !squares[row][col + cdir].getText().equals("") ? checkWalls(row, col, 0, cdir) && checkWalls(row, col + cdir, rdir, 0) && !checkWalls(row, col + cdir, 0, cdir) :
+            false;
+      }
+    } else if (dist == 1) {
+      JButton[][][] walls = rdir == 0 ? vwalls : hwalls;
+      result = !walls[row + Math.min(0, rdir)][col + Math.min(0, cdir)][0].getBackground().equals(WALL_COLOR);
+    }
+    DEBUGF("MOVE (%d,%d) + (%d,%d) is %sblocked", row, col, rdir, cdir, result ? "un" : "");
+    return result;
+  }
+
+  private boolean setPawn(int row, int col) {
+    JButton square = squares[row][col];
+    if (!square.getText().equals("")) {
+      return false;
+    }
+    if (pawns[turn] != null) {
+      List<Integer> old = getSquare(pawns[turn]);
+      int orow = old.get(0);
+      int ocol = old.get(1);
+      if (!square.getText().equals("")) {
+        return false;
+      }
+      if (!checkWalls(orow, ocol, row - orow, col - ocol)) {
+        return false;
+      }
+
+      pawns[turn].setText("");
+    } else {
+      /* This is hopefully during setup... */
+    }
+    pawns[turn] = square;
+    pawns[turn].setText(NAMES[turn]);
+    turn = 1 - turn;
+    return true;
+  }
+
+  private boolean setWall(boolean vertical, int r, int c, int h) {
+    JButton[][][] walls = vertical ? vwalls : hwalls;
+    int vp = vertical ? 1 : 0;
+    int hp = 1 - vp;
+
+    int rp = r + vp * (2 * h - 1);
+    int cp = c + hp * (2 * h - 1);
+    int[][] locations = { { r, c, h }, { r, c, 1 - h }, { rp, cp, h }, { rp, cp, 1 - h} };
+
+    int cr = r + vp * (h - 1);
+    int cc = c + hp * (h - 1);
+
+    for (int[] l : locations) {
+      if (walls[l[0]][l[1]][l[2]].getBackground().equals(WALL_COLOR)) {
+        return false;
+      }
+    }
+    if (cwalls[cr][cc].getBackground().equals(WALL_COLOR)) {
+      return false;
+    }
+    for (int[] l : locations) {
+      walls[l[0]][l[1]][l[2]].setBackground(WALL_COLOR);
+    }
+    cwalls[cr][cc].setBackground(WALL_COLOR);
+    --walls_left[turn];
+    turn = 1 - turn;
+    return true;
+  }
+
   private JButton square(Color bg, boolean actionable)
   {
     JButton square = new JButton();
@@ -114,8 +182,8 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       for(int c = 0; c < COLS  ; ++c) {
         squares[r][c] = square(Color.BLACK, true);
         for(int i = 0; i < 2; ++i) {
-          if (c < COLS - 1) vwalls[r][c][i] = square(Color.WHITE, (c + i) * (COLS - 1 - c - i) != 0);
-          if (r < ROWS - 1) hwalls[r][c][i] = square(Color.WHITE, (r + i) * (ROWS - 1 - c - i) != 0);
+          if (c < COLS - 1) vwalls[r][c][i] = square(Color.WHITE, (r + i) * (ROWS - r - i) != 0);
+          if (r < ROWS - 1) hwalls[r][c][i] = square(Color.WHITE, (c + i) * (COLS - c - i) != 0);
         }
         if (r < ROWS - 1 && c < COLS - 1) cwalls[r][c] = square(Color.WHITE, false);
       }
@@ -214,20 +282,30 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       List<Integer> hwall = getHorizontalWall(event.getSource());
       int old_turn = turn;
       if (square != null) {
-        setPawn(square.get(0), square.get(1));
-        System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], 9 *  square.get(0) + square.get(1) + 1, walls_left[old_turn]));
+        DEBUGF("Attempting to set pawn (%d, %d)", square.get(0), square.get(1));
+        if (setPawn(square.get(0), square.get(1))) {
+          System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], 9 *  square.get(0) + square.get(1) + 1, walls_left[old_turn]));
+        }
       } else if (vwall != null) {
-        setVerticalWall(vwall.get(0), vwall.get(1), vwall.get(2));
-        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], vwall.get(0) + vwall.get(2), vwall.get(1) + 'A', walls_left[old_turn]));
+        DEBUGF("Attempting to place vwall (%d, %d, %d)", vwall.get(0), vwall.get(1), vwall.get(2));
+        if (setWall(true, vwall.get(0), vwall.get(1), vwall.get(2))) {
+          System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], vwall.get(0) + vwall.get(2), vwall.get(1) + 'A', walls_left[old_turn]));
+        }
       } else if (hwall != null) {
-        setHorizontalWall(hwall.get(0), hwall.get(1), hwall.get(2));
-        System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], hwall.get(0) + 1, hwall.get(1) + hwall.get(2) - 1 + 'A', walls_left[old_turn]));
+        DEBUGF("Attempting to set hwall (%d, %d, %d)", hwall.get(0), hwall.get(1), hwall.get(2));
+        if (setWall(false, hwall.get(0), hwall.get(1), hwall.get(2))) {
+          System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], hwall.get(0) + 1, hwall.get(1) + hwall.get(2) - 1 + 'A', walls_left[old_turn]));
+        }
       } else {
         System.err.println("Unidentified action");
       }
     } catch (ArrayIndexOutOfBoundsException aex) {
       throw aex;
     }
+  }
+
+  private static void mverror() {
+    System.out.println("MVERROR");
   }
 
   public static void main(String[] args) throws Throwable
@@ -245,20 +323,26 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       String[] cmd = line.split(" ");
       try {
         if (cmd[0].equals("MOVE")) {
-          q.turn = cmd[1].equals("O") ? 0 : 1;
-          if (cmd[2].charAt(0) == '-') {
+          if (!PROTOVER_NAMES[q.turn].equals(cmd[1])) {
+            mverror();
+            continue;
+          }
+          int walls_left = Integer.parseInt(cmd[3]);
+          if (cmd[2].length() == 3) {
+            boolean vertical = cmd[2].charAt(0) == '|';
             int row = cmd[2].charAt(1) - '1';
             int col = cmd[2].charAt(2) - 'A';
-            q.setHorizontalWall(row, col, 1);
-          } else if (cmd[2].charAt(0) == '|') {
-            int row = cmd[2].charAt(1) - '1';
-            int col = cmd[2].charAt(2) - 'A';
-            q.setVerticalWall(row, col, 1);
+            
+            if(walls_left != q.getWallsLeft() - 1 || !q.setWall(vertical, row, col, 1)) {
+              mverror();
+            }
           } else {
             int value = Integer.parseInt(cmd[2]) - 1;
             int row = value / 9;
             int col = value % 9;
-            q.setPawn(row, col);
+            if(walls_left != q.getWallsLeft() || !q.setPawn(row, col)) {
+              mverror();
+            }
           }
         } else if (cmd[0].equals("NEW")) {
           q.setVisible(false);
@@ -288,12 +372,12 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
 //          System.err.println("Unrecognized line: " + line);
         }
       } catch (Exception ex) {
-//        throw ex;
         if (cmd.length > 0 && cmd[0].equals("MOVE")) {
           System.out.println("MVERROR");
         } else {
           System.out.println("ERROR");
         }
+        throw ex;
       }
     }
   }
