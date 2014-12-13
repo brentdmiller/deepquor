@@ -30,6 +30,7 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   JButton[][] cwalls = new JButton[ROWS-1][COLS-1];
   JButton[][][] vwalls = new JButton[ROWS][COLS-1][2];
   JButton[][][] hwalls = new JButton[ROWS-1][COLS][2];
+  JButton[][][][] walls = {vwalls, hwalls};
 
 
   private void DEBUGF(String fmt, Object... args) {
@@ -48,36 +49,25 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     return walls_left[turn];
   }
 
-  private List<Integer> getSquare(Object source) {
+  private int[] getSquare(Object source) {
     for (int i = 0; i < squares.length; ++i) {
       for (int j = 0; j < squares[i].length; ++j) {
         if (squares[i][j] == source) {
-          return asList(i, j);
+          return new int[]{i, j};
         }
       }
     }
     return null;
   }
 
-  private List<Integer> getVerticalWall(Object source) {
-    for (int i = 0; i < vwalls.length; ++i) {
-      for (int j = 0; j < vwalls[i].length; ++j) {
-        for (int k = 0; k < vwalls[i][j].length; ++k) {
-          if (vwalls[i][j][k] == source) {
-            return asList(i, j, k);
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  private List<Integer> getHorizontalWall(Object source) {
-    for (int i = 0; i < hwalls.length; ++i) {
-      for (int j = 0; j < hwalls[i].length; ++j) {
-        for (int k = 0; k < hwalls[i][j].length; ++k) {
-          if (hwalls[i][j][k] == source) {
-            return asList(i, j, k);
+  private int[] getWall(Object source) {
+    for (int i = 0; i < walls.length; ++i) {
+      for (int j = 0; j < walls[i].length; ++j) {
+        for (int k = 0; k < walls[i][j].length; ++k) {
+          for (int l = 0; l < walls[i][j][k].length; ++l) {
+            if (walls[i][j][k][l] == source) {
+              return new int[]{i, j, k, l};
+            }
           }
         }
       }
@@ -114,9 +104,9 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       return false;
     }
     if (pawns[turn] != null) {
-      List<Integer> old = getSquare(pawns[turn]);
-      int orow = old.get(0);
-      int ocol = old.get(1);
+      int[] old = getSquare(pawns[turn]);
+      int orow = old[0];
+      int ocol = old[1];
       if (!square.getText().equals("")) {
         return false;
       }
@@ -275,33 +265,58 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   public void mouseEntered(MouseEvent event) {}
   public void mouseExited(MouseEvent event) {}
 
+  private int squareToLoc(int... square) {
+    return 9 * square[0] + square[1] + 1;
+  }
+
+  static final char[] DIR = { '|', '-' };
+  private String wallToLoc(int... wall) {
+    return String.format("%c%d%c", DIR[wall[0]], wall[1] + 1 + (1 - wall[0]) * (wall[3] - 1), wall[2] + wall[0] * (wall[3] - 1) + 'A');
+  }
+
   public void actionPerformed(ActionEvent event) {
     try {
-      List<Integer> square = getSquare(event.getSource());
-      List<Integer> vwall = getVerticalWall(event.getSource());
-      List<Integer> hwall = getHorizontalWall(event.getSource());
+      int[] square = getSquare(event.getSource());
+      int[] wall = getWall(event.getSource());
       int old_turn = turn;
       if (square != null) {
-        DEBUGF("Attempting to set pawn (%d, %d)", square.get(0), square.get(1));
-        if (setPawn(square.get(0), square.get(1))) {
-          System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], 9 *  square.get(0) + square.get(1) + 1, walls_left[old_turn]));
+        DEBUGF("Attempting to set pawn (%d, %d)", square[0], square[1]);
+        if (setPawn(square[0], square[1])) {
+          System.out.println(String.format("MOVE %s %d %d", PROTOVER_NAMES[old_turn], squareToLoc(square), walls_left[old_turn]));
         }
-      } else if (vwall != null) {
-        DEBUGF("Attempting to place vwall (%d, %d, %d)", vwall.get(0), vwall.get(1), vwall.get(2));
-        if (setWall(true, vwall.get(0), vwall.get(1), vwall.get(2))) {
-          System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], vwall.get(0) + vwall.get(2), vwall.get(1) + 'A', walls_left[old_turn]));
+      } else if (wall != null) {
+        DEBUGF("Attempting to place wall (%d, %d, %d, %d)", wall[0], wall[1], wall[2], wall[3]);
+        if (setWall(wall[0] == 0, wall[1], wall[2], wall[3])) {
+          System.out.println(String.format("MOVE %s %s %d", PROTOVER_NAMES[old_turn], wallToLoc(wall), walls_left[old_turn]));
         }
-      } else if (hwall != null) {
-        DEBUGF("Attempting to set hwall (%d, %d, %d)", hwall.get(0), hwall.get(1), hwall.get(2));
-        if (setWall(false, hwall.get(0), hwall.get(1), hwall.get(2))) {
-          System.out.println(String.format("MOVE %s |%d%c %d", PROTOVER_NAMES[old_turn], hwall.get(0) + 1, hwall.get(1) + hwall.get(2) - 1 + 'A', walls_left[old_turn]));
-        }
-      } else {
+      }  else {
         System.err.println("Unidentified action");
       }
     } catch (ArrayIndexOutOfBoundsException aex) {
       throw aex;
     }
+  }
+
+  private void getBoard() {
+    System.out.print(String.format("GAMESTATE %s %d %d %d %d", PROTOVER_NAMES[turn], squareToLoc(getSquare(pawns[0])), squareToLoc(getSquare(pawns[1])), walls_left[0], walls_left[1]));
+    for (int r = 0; r < hwalls.length; ++r) {
+      for (int c = 0; c < hwalls[r].length; ++c) {
+        if (hwalls[r][c][1].getBackground().equals(WALL_COLOR)) {
+          System.out.print(" " + wallToLoc(1, r, c, 1));
+          ++c;
+        }
+      }
+    }
+    for (int c = 0; c < vwalls[0].length; ++c) {
+      for (int r = 0; r < vwalls.length; ++r) {
+        if (vwalls[r][c][1].getBackground().equals(WALL_COLOR)) {
+          System.out.print(" " + wallToLoc(0, r, c, 1));
+          ++r;
+        }
+     
+      }
+    }
+    System.out.println();
   }
 
   private static void mverror() {
@@ -355,6 +370,8 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
           }
         } else if (cmd[0].equals("HELLO")) {
           // NOTHING TO DO
+        } else if (cmd[0].equals("GAMESTATE")) {
+          // Ignoring for now
         } else if (cmd[0].equals("WHITE")) {
           // Ignoring for now
         } else if (cmd[0].equals("BLACK")) {
@@ -363,6 +380,8 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
           // We sent 0.1, nothing lower
         } else if (cmd[0].equals("FEATURE")) {
           System.out.println("REJECTED");
+        } else if (cmd[0].equals("GETBOARD")) {
+          q.getBoard();
         } else if (cmd[0].equals("SETBOARD")) {
           System.out.println("ERROR");
         } else if (cmd[0].equals("QUIT")) {
