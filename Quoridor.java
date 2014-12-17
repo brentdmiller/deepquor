@@ -1,12 +1,10 @@
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.util.*;
 import static java.util.Arrays.*;
+import static java.util.Collections.*;
 import java.io.*;
 
 public class Quoridor extends JFrame implements MouseListener, ActionListener
@@ -19,6 +17,10 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   static final String[] NAMES = {"W", "B"};
   static final String[] PROTOVER_NAMES = {"O", "X"};
   static final String[] DEFAULT_ARGS = "SETBOARD O 5 77 9 9".split(" ");
+
+  // (O(R,C), X(R,C)). -1 = Don't care
+  static final int[][] VICTORY = {{ROWS-1, -1}, {0, -1}};
+  static final int[][] DIRS = {{1,0},{-1,0},{0,-1},{0,1}};
 
   static final Color WALL_COLOR = Color.GRAY;
 
@@ -76,6 +78,32 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     return null;
   }
 
+  private boolean isBlocked(int row, int col, int rdir, int cdir) {
+    return isBlocked(row, col, rdir, cdir, emptySet(), emptySet());
+  }
+
+  private boolean isBlocked(int row, int col, int rdir, int cdir, Set<Point> pvwall, Set<Point> phwall) {
+    if (0 <= row + rdir && 0 <= col + cdir && row + rdir < squares.length && col + cdir < squares[row + rdir].length) {
+      JButton[][][] walls = rdir == 0 ? vwalls : hwalls;
+      Set<Point> pwall = rdir == 0 ? pvwall : phwall;
+      // rdir == 1,0 -> 0, -1 -> -1
+      int rwall = row + (rdir - 1) / 2;
+      int cwall = col + (cdir - 1) / 2;
+
+      if (walls[rwall][cwall][0].getBackground().equals(WALL_COLOR)) {
+        DEBUGF("Move (%d, %d) + (%d, %d) is blocked by an existing wall (%d, %d)", row, col, rdir, cdir, rwall, cwall);
+        return true;
+      } else if (pwall.contains(new Point(rwall, cwall))) {
+        DEBUGF("Move (%d, %d) + (%d, %d) is blocked by a possible wall (%d, %d)", row, col, rdir, cdir, rwall, cwall);
+        return true;
+      }
+    } else {
+      DEBUGF("Location (%d, %d) is out of bounds", row + rdir, col + cdir);
+      return true;
+    }
+    return false;
+  }
+
   private boolean checkWalls(int row, int col, int rdir, int cdir) {
     int dist = Math.abs(rdir) + Math.abs(cdir);
     boolean result = false;
@@ -93,13 +121,13 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       }
     } else if (dist == 1) {
       JButton[][][] walls = rdir == 0 ? vwalls : hwalls;
-      result = !walls[row + Math.min(0, rdir)][col + Math.min(0, cdir)][0].getBackground().equals(WALL_COLOR);
+      result = !isBlocked(row, col, rdir, cdir);
     }
     DEBUGF("MOVE (%d,%d) + (%d,%d) is %sblocked", row, col, rdir, cdir, result ? "un" : "");
     return result;
   }
 
-  private boolean setPawn(int... args) {
+  private boolean checkPawn(int... args) {
     int row = args[0];
     int col = args[1];
     JButton square = squares[row][col];
@@ -116,7 +144,85 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
       if (!checkWalls(orow, ocol, row - orow, col - ocol)) {
         return false;
       }
+    }
+    return true;
+  }
 
+  private boolean checkPath(int row, int col, int vrow, int vcol, Set<Point> seen, Set<Point> pvwall, Set<Point> phwall) {
+    DEBUGF("Reached (%d, %d)", row, col);
+    if ((vrow == -1 || vrow == row) && (vcol == -1 || vcol == col)) {
+      return true;
+    } else if (seen.contains(new Point(row, col))) {
+      return false;
+    }
+    seen.add(new Point(row, col));
+    for (int[] dir : DIRS) {
+      int rdir = dir[0];
+      int cdir = dir[1];
+      if (!isBlocked(row, col, rdir, cdir, pvwall, phwall) && checkPath(row + rdir, col + cdir, vrow, vcol, seen, pvwall, phwall)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean checkWall(int... args) {
+    boolean vertical = args[0] == 0;
+    int r = args[1];
+    int c = args[2];
+    int h = args[3];
+
+    JButton[][][] walls = vertical ? vwalls : hwalls;
+    int vp = vertical ? 1 : 0;
+    int hp = 1 - vp;
+
+    int rp = r + vp * (2 * h - 1);
+    int cp = c + hp * (2 * h - 1);
+    int[][] locations = { { r, c, h }, { r, c, 1 - h }, { rp, cp, h }, { rp, cp, 1 - h} };
+
+    int cr = r + vp * (h - 1);
+    int cc = c + hp * (h - 1);
+
+    if (getWallsLeft() == 0) {
+      return false;
+    }
+
+    for (int[] l : locations) {
+      if (walls[l[0]][l[1]][l[2]].getBackground().equals(WALL_COLOR)) {
+        DEBUGF("Blocked by wall in same direction");
+        return false;
+      }
+    }
+
+    if (cwalls[cr][cc].getBackground().equals(WALL_COLOR)) {
+      DEBUGF("Blocked by perpendicular wall");
+      return false;
+    }
+
+    Set<Point> pwall = new HashSet<Point>(asList(new Point(r,c), new Point(rp, cp)));
+    Set<Point> pvwall =  vertical ? pwall : emptySet();
+    Set<Point> phwall = !vertical ? pwall : emptySet();
+
+    for (int i = 0; i < VICTORY.length; ++i) {
+      int[] loc = getSquare(pawns[i]);
+      if (!checkPath(loc[0], loc[1], VICTORY[i][0], VICTORY[i][1], new HashSet<Point>(), pvwall, phwall)) {
+        DEBUGF("No valid path for player %d to victory", i);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private boolean setPawn(int... args) {
+    int row = args[0];
+    int col = args[1];
+    JButton square = squares[row][col];
+
+    if (!checkPawn(args)) {
+      return false;
+    }
+    if (pawns[turn] != null) {
       pawns[turn].setText("");
     } else {
       /* This is hopefully during setup... */
@@ -144,14 +250,10 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     int cr = r + vp * (h - 1);
     int cc = c + hp * (h - 1);
 
-    for (int[] l : locations) {
-      if (walls[l[0]][l[1]][l[2]].getBackground().equals(WALL_COLOR)) {
-        return false;
-      }
-    }
-    if (cwalls[cr][cc].getBackground().equals(WALL_COLOR)) {
+    if (!checkWall(args)) {
       return false;
     }
+
     for (int[] l : locations) {
       walls[l[0]][l[1]][l[2]].setBackground(WALL_COLOR);
     }
