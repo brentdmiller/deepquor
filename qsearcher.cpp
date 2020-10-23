@@ -8,6 +8,7 @@
 
 #include "qsearcher.h"
 #include "getmoves.h"
+#include "parameters.h"
 #include <memory>
 #include <sys/time.h>
 

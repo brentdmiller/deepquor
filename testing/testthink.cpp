@@ -15,10 +15,19 @@ void dumpSituation(qMoveStack *movStack)
 void printMove(qMove mv)
 {
   if (mv.isWallMove()) {
-    	printf("Move: wall drop at (%s=%d, pos=%d)\n",
-               (mv.wallMoveIsRow() ? "ROW" : "COL"),
-	       mv.wallRowOrColNo(),
-	       mv.wallPosition());
+        if (mv.wallMoveIsRow()) {
+                printf("Move: wall drop at (%s=%d.5, pos=%c-%c)\n",
+                       "ROW",
+                        mv.wallRowOrColNo(),
+                        'A' + mv.wallPosition(),
+                        'B' + mv.wallPosition());
+        } else {
+                printf("Move: wall drop at (%s=%c.5, pos=%d-%d)\n",
+                       "COL",
+                       'A' + mv.wallRowOrColNo(),
+                       mv.wallPosition(),
+                       1+mv.wallPosition());
+        }
   } else {
     printf("Move: pawn move ");
 

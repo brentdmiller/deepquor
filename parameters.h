@@ -97,8 +97,8 @@
 // of dubious value because many searched positions would be useless.
 
 // Used in qsearcher.cpp
-#define MAXTIME_PER_THINK_SERVICE 4000
-#define SUGTIME_PER_THINK_SERVICE 3000
+#define MAXTIME_PER_THINK_SERVICE 4000U
+#define SUGTIME_PER_THINK_SERVICE 3000U
 
 /* Define the following if we support tracking the # of position
  * evaluations used to comprise the current position eval.

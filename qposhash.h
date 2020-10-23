@@ -19,6 +19,7 @@
 using namespace std;
 
 // #include <glib.h>
+#include "stdlib.h"     /* Needed for calloc */
 #include "qtypes.h"  // REMOVE THIS--it's just here for a glib hack
 // Remove qtypes.h when glib.h works
 
