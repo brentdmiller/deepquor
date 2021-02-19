@@ -396,7 +396,7 @@ const qPositionEvaluation *qSearcher::iScanDeeper
     }
   else
     {
-      // Check if this position is already in the move stack
+      // If this is a cycle back to previous position, there's no winner
       if (moveStack.isInEvalStack(posInfo, player2move)) {
 	return positionEval_even;
       }
@@ -703,7 +703,7 @@ guint32 milliSecondTimer::getElapsed()
 
 #if 0
 // This code was originally when I was going to have a bg thinker
-// thread spawned by the qsearcher object, but I think it's move flexible
+// thread spawned by the qsearcher object, but I think it's more flexible
 // to have a think service func so this code is unused for now.
 void setBackgroundThinking(bool thinking)
 {

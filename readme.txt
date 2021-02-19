@@ -17,7 +17,7 @@ In addition, qtype.cpp defines a few constants that are available for use
 
 The larger data structures and interfaces are as follows:
   qPosition - qposition.[h,cpp]
-  * An encoded position; encoding intended to use as few bytes as possible
+  * An encoded position, intended to use as few bytes as possible
 
   qPositionInfo - qposinfo.[h,cpp]
   * Holds all information that gets cached regarding a position.
@@ -194,7 +194,7 @@ OPTIMIZATIONS:
 2. Reset the qComputationTree used by scanDeeper in applyMove() (rather
    than in iSearch() & think()), so calls to think() don't lose context
    every time.
-3. Examine callse to scanDeeper, & make sure that any time a won position
+3. Examine calls to scanDeeper, & make sure that any time a won position
    is returned we pass it back immediately rather than continuing to evaluate
    positions.  ???  This might not be worth doing.  The extra comparison gets
    run for every examined position, costing a bit over the course of
@@ -207,3 +207,7 @@ OPTIMIZATIONS:
    them all and then do a once-over sort. (qsearcher.h)
 5. in scanDeeper (qsearcher.cpp), when aborting a dive because a position is
    found known won/lost, avoid costly call to ratePositionFromNeighbors()
+6. In choosing which lines deserve greater analysis, grant highest complexity
+   to positions in which wall drops dramatically change the score
+7. Identify "irrelevant regions" and prune wall drops in these regions,
+   maybe by assigning artificially low complexity.
