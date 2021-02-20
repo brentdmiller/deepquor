@@ -80,14 +80,18 @@ int main
     printf("%s to move\n", whoseMove.getPlayerName());
     dumpSituation(searchObj.getPlayerToMove(), searchObj.getPos());
 
+    // ??? This is where we would prompt for user commands
+    // but for now we'll just let the computer play itself
+    // to test the flow.
+
     mv = searchObj.search(
 			  whoseMove,	// Which player to find a move for
 			  30,	// keep thinking until below
 			  1,	// keep thinking until beyond
 			  2,	// brute force search this many plies
 			  5,	// don't need to refine beyond this
-			  /*3600**/24*1000,// Hard limit on our avail. time
-			  /*3600**/16*1000);// Start relaxing criteria after this
+			  /*3600**/7*1000,// Hard limit on our avail. time
+			  /*3600**/3*1000);// Start relaxing criteria after this
 
     printf("\n%s plays:\n", whoseMove.getPlayerName());
     printMove(mv);
