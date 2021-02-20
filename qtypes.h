@@ -136,6 +136,8 @@ typedef enum { COL=0, ROW=1 } RowOrCol;
 class qPlayer {
  private:
   gint8 playerId;
+  static const char *qPlayerName_white;
+  static const char *qPlayerName_black;
 
   /* First some basic types */
  public:
@@ -153,6 +155,7 @@ class qPlayer {
   bool isBlack()      const { return(playerId == BlackPlayer); }
   gint8 getPlayerId() const { return playerId;  }
   gint8 getOtherPlayerId() const { return 1-playerId; }
+  const char *getPlayerName() const { return(playerId == WhitePlayer ? qPlayerName_white : qPlayerName_black); }
 };
 
 

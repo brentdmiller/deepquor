@@ -125,7 +125,7 @@ qMoveList *getPlayableMoves(const qPosition  *pos,
   if (!pos || !movStack || !moveList)
     return NULL;
 
-  qPlayer player2move = movStack->getPlayer2Move();
+  qPlayer player2move = movStack->getPlayerToMove();
 
   // Push legal player moves onto the beginning of the list;
   if (!getPossiblePawnMoves(pos, player2move, moveList))
@@ -180,7 +180,7 @@ qMoveList *getCandidateMoves(const qPosition  *pos,
   if (!pos || !movStack || !moveList)
     return NULL;
 
-  qPlayer player2move = movStack->getPlayer2Move();
+  qPlayer player2move = movStack->getPlayerToMove();
 
   // Push legal player moves onto the beginning of the list;
   if (!getPossiblePawnMoves(pos, player2move, moveList))

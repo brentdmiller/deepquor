@@ -2,23 +2,13 @@
 #include "qposhash.h"
 #include "qmovstack.h"
 #include "qsearcher.h"
+#include <stdio.h>
 
-void dumpPos(const qPosition *pos)
+void dumpSituation(qPlayer whoseMove, const qPosition *pos)
 {
-	printf(" White pawn: (%d, %d)\n",
-		pos->getWhitePawn().x(), pos->getWhitePawn().y());
-	printf(" Black pawn: (%d, %d)\n",
-		pos->getBlackPawn().x(), pos->getBlackPawn().y());
-	printf(" White walls left: %d\n", pos->numWhiteWallsLeft());
-	printf(" Black walls left: %d\n", pos->numBlackWallsLeft());
-}
-
-void dumpSituation(qMoveStack *movStack)
-{
-	printf("Player to move: %s\n",
-		movStack->getPlayerToMove().isWhite() ? "white" : "black");
+	printf("Player to move: %s\n", whoseMove.getPlayerName());
 	printf("Current position:\n");
-	dumpPos(movStack->getPos());
+	pos->dump();
 }
 
 void printMove(qMove mv)
@@ -36,7 +26,7 @@ void printMove(qMove mv)
                        'A' + mv.wallRowOrColNo(),
                        mv.wallPosition(),
                        1+mv.wallPosition());
-        }       
+        }
   } else {
     printf("Move: pawn move ");
 
@@ -63,11 +53,17 @@ void printMove(qMove mv)
   }
 }
 
-qMove doTest
-(qPosition *myPos,
- qPlayer    whoseMove)
+int main
+(int argc, char **argv)
 {
-  qMove mv;
+  qPosition startPos(NULL, NULL, // Walls
+		     qSquare(4), qSquare(76), // Pawns
+		     10, 10); // Walls remaining
+  qPosition *myPos = &startPos;
+
+  // We really don't need this movstack; we could just apply moves
+  // to our copy of "myPos"
+  qPlayer whoseMove = qPlayer::WhitePlayer;
 
   qSearcher searchObj(myPos, whoseMove);
 
@@ -75,44 +71,34 @@ qMove doTest
   // to our copy of "myPos"
   qMoveStack *movStack = new qMoveStack(myPos, whoseMove);
 
-  printf("INITIAL POSITION\n");
-  dumpSituation(movStack);
+  qMove mv;
 
-  mv = searchObj.search(
-			whoseMove,	// Which player to find a move for
-			30,	// keep thinking until below
-			1,	// keep thinking until beyond
-			2,	// brute force search this many plies
-			5,	// don't need to refine beyond this
-			3600*24*1000,// Hard limit on our avail. time
-			3600*16*1000);// Start relaxing criteria after this
+  whoseMove.changePlayer(); // Hack to simplify the main loop
+  while (1) {
+    whoseMove.changePlayer();
 
-  printf("\nRETURNED MOVE FOR %s:\n", whoseMove.isWhite() ? "WHITE" : "BLACK");
-  printMove(mv);
-  movStack->pushMove(whoseMove, mv);
-  //dumpSituation(movStack);
-  searchObj.applyMove(mv, whoseMove);
-  whoseMove.changePlayer();
+    printf("%s to move\n", whoseMove.getPlayerName());
+    dumpSituation(searchObj.getPlayerToMove(), searchObj.getPos());
 
+    mv = searchObj.search(
+			  whoseMove,	// Which player to find a move for
+			  30,	// keep thinking until below
+			  1,	// keep thinking until beyond
+			  2,	// brute force search this many plies
+			  5,	// don't need to refine beyond this
+			  /*3600**/24*1000,// Hard limit on our avail. time
+			  /*3600**/16*1000);// Start relaxing criteria after this
+
+    printf("\n%s plays:\n", whoseMove.getPlayerName());
+    printMove(mv);
+    printf("\n\n");
+
+    searchObj.applyMove(mv, whoseMove);
+
+  } while (!movStack->getPos()->isWon(whoseMove));
+
+  printf("%s wins\n\n", whoseMove.getPlayerName());
+    
   delete movStack;
-  printf("\n\n");
-  return mv;
-}
-
-qMove yo() {
-  return qMove((guint8)3);
-}
-
-int main
-(int argc, char **argv)
-{
-
-  qMove foo((guint8)5);
-  //qMove foo(5);
-  qMove bar((guint8)1);
-
-  bar = yo();
-
-
   return 0;
 }

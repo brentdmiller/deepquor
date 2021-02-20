@@ -7,7 +7,7 @@
 void dumpSituation(qMoveStack *movStack)
 {
 	printf("Player to move: %s\n",
-		movStack->getPlayer2Move().isWhite() ? "white" : "black");
+		movStack->getPlayerToMove().isWhite() ? "white" : "black");
 	printf("Current position:\n");
 	movStack->getPos()->dump();
 }

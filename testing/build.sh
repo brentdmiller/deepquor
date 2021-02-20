@@ -18,6 +18,8 @@ g++ $CFLAGS -o movstack testmovstack.o ../qposinfo.o ../qmovstack.o ../qposhash.
 g++ $CFLAGS -c -I.. testthink.cpp
 g++ $CFLAGS -o think testthink.o ../qcomptree.o ../qsearcher.o ../eval.o ../qdijkstra.o ../getmoves.o ../qposinfo.o ../qmovstack.o ../qposhash.o ../qposition.o ../qtypes.o
 
+g++ $CFLAGS -c -I.. quorshell.cpp
+g++ $CFLAGS -o quorshell quorshell.o ../qcomptree.o ../qsearcher.o ../eval.o ../qdijkstra.o ../getmoves.o ../qposinfo.o ../qmovstack.o ../qposhash.o ../qposition.o ../qtypes.o
 # -Wl,--stack,128000000
 
 #g++ $CFLAGS -c -I.. t.cpp

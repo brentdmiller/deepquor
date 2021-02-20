@@ -140,7 +140,7 @@ class qMoveStack {
   const qPosition* getPos(void) const {return &(moveStack[sp].resultingPos);} ;
   const qPosition* getPrevPos(void) const
     {return (sp > 0) ? &(moveStack[sp-1].resultingPos) : NULL;};
-  qPlayer getPlayer2Move(void) const
+  qPlayer getPlayerToMove(void) const
     { return moveStack[sp].playerMoved.otherPlayer(); };
 
   // By setting the posinfo as we build a stack, we can avoid needing to

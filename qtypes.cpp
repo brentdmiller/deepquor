@@ -14,6 +14,8 @@ IDSTR("$Id: qtypes.cpp,v 1.2 2006/07/18 06:55:33 bmiller Exp $");
 /****/
 const qPlayer qPlayer_white(qPlayer::WhitePlayer);
 const qPlayer qPlayer_black(qPlayer::BlackPlayer);
+const char *qPlayer::qPlayerName_white="WHITE";
+const char *qPlayer::qPlayerName_black="BLACK";
 
 const qMove moveUp    = qMove(UP);
 const qMove moveDown  = qMove(DOWN);

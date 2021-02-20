@@ -60,7 +60,11 @@ public:
   // to evaluate.
   void think(qPlayer player2move, gint32 thinkAmount = 10);
 
-private:
+  // Debugging stuff
+  inline const qPosition* getPos() { return moveStack.getPos(); }
+  inline qPlayer getPlayerToMove() { return moveStack.getPlayerToMove(); }
+
+ private:
   qPositionInfoHash posHash; // Where we store everything we've thought about
 
    // Where we store what we're thinking about
@@ -110,6 +114,7 @@ private:
 					qPlayer          player2move,
 					gint32           depth,
 					guint32         &r_positionsEvaluated);
+
 };
 
 

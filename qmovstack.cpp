@@ -318,7 +318,7 @@ qPositionInfo *qMoveStack::pushEval
   if (!endPosInfo && !posHash)
     return NULL;
 
-  g_assert(whoMoved.getPlayerId() == this->getPlayer2Move().getPlayerId());
+  g_assert(whoMoved.getPlayerId() == this->getPlayerToMove().getPlayerId());
 
   // 1. Mark position as under evaluation in posInfo w/setMoveInEval()
   if (!this->moveStack[sp].posInfo) {
@@ -357,7 +357,7 @@ void qMoveStack::popEval(void)
   g_assert(this->getPosInfo());
 
   // 2. Mark the position we were examining as no longer under evaluation
-  clearMoveInEval(this->getPosInfo(), this->getPlayer2Move());
+  clearMoveInEval(this->getPosInfo(), this->getPlayerToMove());
 }
 
 // This is a fast check--since revisiting positions is rare, it should
