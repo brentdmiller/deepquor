@@ -4,12 +4,11 @@
 #include "qsearcher.h"
 #include <stdio.h>
 
-void dumpSituation(qMoveStack *movStack)
+void dumpSituation(qPlayer whoseMove, const qPosition *pos)
 {
-	printf("Player to move: %s\n",
-		movStack->getPlayerToMove().isWhite() ? "white" : "black");
+	printf("Player to move: %s\n", whoseMove.getPlayerName());
 	printf("Current position:\n");
-	movStack->getPos()->dump();
+	pos->dump();
 }
 
 void printMove(qMove mv)
@@ -62,12 +61,8 @@ qMove doTest
 
   qSearcher searchObj(myPos, whoseMove);
 
-  // We really don't need this movstack; we could just apply moves
-  // to our copy of "myPos"
-  qMoveStack *movStack = new qMoveStack(myPos, whoseMove);
-
   printf("INITIAL POSITION\n");
-  dumpSituation(movStack);
+  dumpSituation(searchObj.getPlayerToMove(), searchObj.getPos());
 
   mv = searchObj.search(
 			whoseMove,	// Which player to find a move for
@@ -78,14 +73,11 @@ qMove doTest
 			/*3600**/24*1000,// Hard limit on our avail. time
 			/*3600**/16*1000);// Start relaxing criteria after this
 
-  printf("\nRETURNED MOVE FOR %s:\n", whoseMove.isWhite() ? "WHITE" : "BLACK");
+  printf("\nRETURNED MOVE FOR %s:\n", whoseMove.getPlayerName());
   printMove(mv);
-  movStack->pushMove(whoseMove, mv);
-  //dumpSituation(movStack);
   searchObj.applyMove(mv, whoseMove);
   whoseMove.changePlayer();
 
-  delete movStack;
   printf("\n\n");
   return mv;
 }
