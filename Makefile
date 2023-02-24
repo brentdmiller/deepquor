@@ -23,7 +23,9 @@ SRC = getmoves.cpp qdijkstra.cpp qmovstack.cpp qposhash.cpp qposinfo.cpp \
 OBJ = $(addsuffix .o, $(basename $(SRC)))
 
 # And now we begin...
-all: deepquor-lib
+all: deepquor-lib connect
+
+connect.o: connect.c
 
 eval.o:	eval.cpp qtypes.h qposition.h qposinfo.h qposhash.h qmovstack.h parameters.h
 
@@ -69,6 +71,8 @@ qposition.h: qtypes.h
 #qtypes.h:
 #
 
+connect: connect.o
+	$(CC) $< -o connect
 
 
 deepquor-lib: $(OBJ)
