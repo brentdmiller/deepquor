@@ -1,5 +1,6 @@
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.*;
@@ -14,9 +15,11 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   static final int ROWS = 9, COLS = 9;
   static final int MDIM = 50, mDIM = 10;
   static final String[] NAMES = {"W", "B"};
-
+  static final String[] LONG_NAMES = {"White", "Black"};
+  boolean frozen = false;
 
   int turn = 0;
+  int[] walls_left = { 10, 10 };
 
   JButton[] pawns = new JButton[2];
 
@@ -24,6 +27,8 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   JButton[][] cwalls = new JButton[ROWS-1][COLS-1];
   JButton[][][] vwalls = new JButton[ROWS][COLS-1][2];
   JButton[][][] hwalls = new JButton[ROWS-1][COLS][2];
+  JTextField tfturn = new JTextField("Turn: White");
+  JTextField[] tfwalls = { new JTextField("White walls: 10"), new JTextField("Black walls: 10") };
 
   private void setPawn(int turn, JButton square) {
     if(pawns[turn] != null) {
@@ -108,7 +113,7 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
 
   private void init()
   {
-    setSize(530,550);
+    setSize(530,590);
     initArrays();
     Component[][] grid = new Component[2 * ROWS - 1][2 * COLS - 1];
 
@@ -135,6 +140,7 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     {
       grid[2*r+1][2*c+1] = cwalls[r][c];
     }
+    JPanel outer = new JPanel(new BorderLayout());
        
     JPanel pane = new JPanel();
     GroupLayout layout = new GroupLayout(pane);
@@ -158,7 +164,15 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
     layout.setVerticalGroup(vsGroup);
     setPawn(0, squares[ROWS-1][COLS / 2]);
     setPawn(1, squares[0][COLS / 2]);
-    setContentPane(pane);
+    outer.add(pane, BorderLayout.CENTER);
+
+    JPanel info = new JPanel();
+    info.add(tfturn);
+    info.add(tfwalls[0]);
+    info.add(tfwalls[1]);
+    outer.add(info, BorderLayout.SOUTH);
+
+    setContentPane(outer);
   }
 
   private Quoridor()
@@ -180,53 +194,85 @@ public class Quoridor extends JFrame implements MouseListener, ActionListener
   public void mouseExited(MouseEvent event) {}
 
   public void actionPerformed(ActionEvent event) {
+    if (frozen) {
+      return;
+    }
     try {
       List<Integer> square = getSquare(event.getSource());
       List<Integer> vwall = getVerticalWall(event.getSource());
       List<Integer> hwall = getHorizontalWall(event.getSource());
       if (square != null) {
-        setPawn(turn, (JButton) event.getSource());
-        System.out.println(9 * (8 - square.get(0)) + square.get(1) + 1);
+        System.out.println("MOVE " + (9 * (8 - square.get(0)) + square.get(1) + 1));
       } else if (vwall != null) {
-        setVerticalWall(vwall.get(0), vwall.get(1), vwall.get(2));
-        System.out.println("|" + (9 - vwall.get(0) - vwall.get(2)) + "" + (char)(vwall.get(1) + 'A'));
+        System.out.println("MOVE |" + (9 - vwall.get(0) - vwall.get(2)) + "" + (char)(vwall.get(1) + 'A'));
       } else if (hwall != null) {
-        setHorizontalWall(hwall.get(0), hwall.get(1), hwall.get(2));
-        System.out.println("-" + (8 - hwall.get(0)) + "" + (char)(hwall.get(1) + hwall.get(2) + 'A'));
+        System.out.println("MOVE -" + (8 - hwall.get(0)) + "" + (char)(hwall.get(1) + hwall.get(2) + 'A'));
       } else {
-        System.out.println("Unidentified action");
-        turn = 1 - turn;
+        System.err.println("Unidentified action");
+        return;
       }
-      turn = 1 - turn;
+      frozen = true;
     } catch (ArrayIndexOutOfBoundsException aex) {
 //      throw aex;
     }
   }
 
+  boolean handleMove(String arg) {
+    try {
+      if (arg.charAt(0) == '-') {
+        int row = 7 - (arg.charAt(1) - '1');
+        int col = arg.charAt(2) - 'A';
+        setHorizontalWall(row, col, 1);
+        walls_left[turn]--;
+      } else if (arg.charAt(0) == '|') {
+        int row = 7 - (arg.charAt(1) - '1');
+        int col = arg.charAt(2) - 'A';
+        setVerticalWall(row, col, 1);
+        walls_left[turn]--;
+      } else {
+        int value = Integer.parseInt(arg) - 1;
+        int row = 8 - value / 9;
+        int col = value % 9;
+        setPawn(turn, squares[row][col]);
+      }
+      turn = 1 - turn;
+      tfturn.setText("Turn: " + LONG_NAMES[turn]);
+      tfwalls[0].setText("White walls: " + walls_left[0]);
+      tfwalls[1].setText("Black walls: " + walls_left[1]);
+      return true;
+    } catch (Exception ex) {
+      System.err.println(ex);
+    }
+    return false;
+  }
+
   public static void main(String[] args) throws Throwable
   {
     UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+    System.out.println("HELLO GUI");
+    System.out.println("PROTOVER 0.0");
     Quoridor q = new Quoridor();
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
     for (String line = br.readLine(); line != null; line = br.readLine()) {
-      try {
-        if (line.charAt(0) == '-') {
-          int row = 7 - (line.charAt(1) - '1');
-          int col = line.charAt(2) - 'A';
-          q.setHorizontalWall(row, col, 1);
-        } else if (line.charAt(0) == '|') {
-          int row = 7 - (line.charAt(1) - '1');
-          int col = line.charAt(2) - 'A';
-          q.setVerticalWall(row, col, 1);
+      args = line.split(" ");
+      if (args.length == 0) {
+      } else if (args[0].equals("MOVE")) {
+        if (args.length == 1) continue;
+        if (q.handleMove(args[1])) {
+          System.out.println("ACKMOVE " + args[1]);
         } else {
-          int value = Integer.parseInt(line) - 1;
-          int row = 8 - value / 9;
-          int col = value % 9;
-          q.setPawn(q.turn, q.squares[row][col]);
+          System.out.println("MVERROR " + args[1]);
         }
-        q.turn = 1 - q.turn;
-      } catch (Exception ex) {
-        throw ex;
+      } else if (args[0].equals("ACKMOVE")) {
+        q.frozen = false;
+        if (args.length == 1) continue;
+        q.handleMove(args[1]);
+      } else if (args[0].equals("MVERROR")) {
+        q.frozen = false;
+      } else if (args[0].equals("HELLO")) {
+      } else if (args[0].equals("PROTOVER")) {
+      } else {
+        System.err.println("Invalid command: " + args[0]);
       }
     }
   }
