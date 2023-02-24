@@ -251,8 +251,8 @@ only).  Do we really need this?  Couldn't the server just send a "GETBOARD"
 if it wants to check that a viewer has gotten all the moves?
 
 MVERROR
-  arg1: error message (optional)
-  arg2: the move that was received (arg1 from client "move" command)
+  arg1: the move that was received (arg1 from client "move" command)
+  arg2: error message (optional)
 Sent if a move was received that the viewer does not accept (i.e. the
 move is not legal, or it is not the opponent's turn, etc.)
 After a MVERROR the state returns to as if the move which caused the error
